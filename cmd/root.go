@@ -11,8 +11,8 @@ import (
 func CreateRootCmd(version string) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:     "bbp",
-		Short:   "bbp is a simple CI/CD tool",
-		Long:    `bbp is a simple CI/CD tool that reads a .ci.yaml file and runs the steps defined in it.`,
+		Short:   "bbp is the Bitbucket Pipelines CLI tool for local development and testing.",
+		Long:    `bbp is the Bitbucket Pipelines CLI tool for local development and testing`,
 		Version: version,
 		Run: func(cmd *cobra.Command, args []string) {
 			data, err := os.ReadFile("testdata/bitbucket-pipelines.yml")

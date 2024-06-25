@@ -5,6 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github/zhex/bbp/pkg/container"
 	"github/zhex/bbp/pkg/models"
+	"runtime"
 	"strings"
 )
 
@@ -35,7 +36,7 @@ func (r *Runner) Run(name string) {
 			for _, step := range action.Parallel.Actions {
 				parallelTasks = append(parallelTasks, r.newStepTask(step.Step))
 			}
-			actionTask = NewParallelTask(10, parallelTasks...)
+			actionTask = NewParallelTask(r.getParallelSize(), parallelTasks...)
 		} else {
 			actionTask = r.newStepTask(action.Step)
 		}
@@ -76,10 +77,24 @@ func (r *Runner) newStepTask(step *models.Step) Task {
 		image = step.Image
 	}
 
-	return NewTaskChain(
+	t := NewTaskChain(
 		NewImagePullTask(c, image),
 		NewContainerCreateTask(c, image),
 		NewContainerStartTask(c),
 		NewContainerExecTask(c, step.Script),
-	).Finally(NewContainerRemoveTask(c))
+	)
+
+	if len(step.AfterScript) > 0 {
+		t = t.Finally(NewContainerExecTask(c, step.AfterScript))
+	}
+
+	return t.Finally(NewContainerRemoveTask(c))
+}
+
+func (r *Runner) getParallelSize() int {
+	ncpu := runtime.NumCPU()
+	if 1 > ncpu {
+		ncpu = 1
+	}
+	return ncpu
 }
