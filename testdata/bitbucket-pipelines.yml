@@ -1,0 +1,27 @@
+pipelines:
+  default:
+    - parallel:
+        steps:
+          - step:
+              name: "Parallel 1"
+              script:
+                - echo "parallel 1"
+          - step:
+              name: "Parallel 2"
+              script:
+                - echo "parallel 2"
+    - step:
+        image: node:10.15.3
+        script:
+          - export FOO=bar
+          - echo "FOO is $FOO"
+
+  custom:
+    test:
+      - step:
+          image: node:10.15.3
+          script:
+            - export FOO=bar
+            - echo "Hello, Custom"
+            - echo "FOO is $FOO"
+

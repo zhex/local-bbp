@@ -2,8 +2,8 @@ package main
 
 import (
 	_ "embed"
+	log "github.com/sirupsen/logrus"
 	"github/zhex/bbp/cmd"
-	"log"
 )
 
 //go:embed VERSION
