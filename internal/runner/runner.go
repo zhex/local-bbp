@@ -2,9 +2,10 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	log "github.com/sirupsen/logrus"
-	"github/zhex/bbp/pkg/container"
-	"github/zhex/bbp/pkg/models"
+	"github/zhex/bbp/internal/container"
+	"github/zhex/bbp/internal/models"
 	"runtime"
 	"strings"
 )
@@ -26,19 +27,26 @@ func (r *Runner) Run(name string) {
 
 	ctx := context.Background()
 
+	result := NewResult(name)
+	ctx = WithResult(ctx, result)
+
 	var chain Task
 
-	for _, action := range actions {
+	for i, action := range actions {
 		var actionTask Task
 
 		if action.IsParallel() {
 			var parallelTasks []Task
-			for _, step := range action.Parallel.Actions {
-				parallelTasks = append(parallelTasks, r.newStepTask(step.Step))
+			for j, subAction := range action.Parallel.Actions {
+				name := fmt.Sprintf("%d.%d - %s", i+1, j+1, subAction.Step.GetName())
+				result.AddStep(name, subAction.Step)
+				parallelTasks = append(parallelTasks, r.newStepTask(name, subAction.Step))
 			}
 			actionTask = NewParallelTask(r.getParallelSize(), parallelTasks...)
 		} else {
-			actionTask = r.newStepTask(action.Step)
+			name := fmt.Sprintf("%d - %s", i+1, action.Step.GetName())
+			result.AddStep(name, action.Step)
+			actionTask = r.newStepTask(name, action.Step)
 		}
 
 		if chain == nil {
@@ -49,6 +57,19 @@ func (r *Runner) Run(name string) {
 	}
 
 	if chain != nil {
+		chain = chain.Finally(func(ctx context.Context) error {
+			for _, sr := range result.StepResults {
+				if sr.Status == "failed" {
+					result.Status = "failed"
+					break
+				}
+			}
+			if result.Status == "pending" {
+				result.Status = "success"
+			}
+			PrintResult(result)
+			return nil
+		})
 		if err := chain(ctx); err != nil {
 			log.Fatalf("Error running task: %s", err)
 		}
@@ -65,7 +86,7 @@ func (r *Runner) getPipeline(name string) []*models.Action {
 	return nil
 }
 
-func (r *Runner) newStepTask(step *models.Step) Task {
+func (r *Runner) newStepTask(name string, step *models.Step) Task {
 	c := container.NewContainer(
 		&container.Input{
 			WorkDir: r.config.WorkDir,
@@ -81,11 +102,11 @@ func (r *Runner) newStepTask(step *models.Step) Task {
 		NewImagePullTask(c, image),
 		NewContainerCreateTask(c, image),
 		NewContainerStartTask(c),
-		NewContainerExecTask(c, step.Script),
+		NewContainerExecTask(c, name, step.Script),
 	)
 
 	if len(step.AfterScript) > 0 {
-		t = t.Finally(NewContainerExecTask(c, step.AfterScript))
+		t = t.Finally(NewContainerExecTask(c, name, step.AfterScript))
 	}
 
 	return t.Finally(NewContainerRemoveTask(c))

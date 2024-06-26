@@ -2,8 +2,9 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	log "github.com/sirupsen/logrus"
-	"github/zhex/bbp/pkg/container"
+	"github/zhex/bbp/internal/container"
 	"strings"
 )
 
@@ -89,14 +90,38 @@ func NewContainerStartTask(c *container.Container) Task {
 	}
 }
 
-func NewContainerExecTask(c *container.Container, cmd []string) Task {
+func NewContainerExecTask(c *container.Container, name string, cmd []string) Task {
 	return func(ctx context.Context) error {
+		result := GetResult(ctx)
+		stepResult, ok := result.StepResults[name]
+
 		if len(cmd) == 0 {
 			log.Warn("No script to run")
+			if ok {
+				stepResult.Outputs["script"] = "No script to run"
+				stepResult.Status = "success"
+			}
 			return nil
 		}
 		log.Debug("executing script")
-		return c.Exec(ctx, []string{"sh", "-ce", strings.Join(cmd, "\n")})
+
+		delimiter := "||delimiter||"
+		output, err := c.Exec(ctx, []string{"sh", "-ce", strings.Join(cmd, fmt.Sprintf("\necho '%s'\n", delimiter))})
+		outputs := strings.Split(output, fmt.Sprintf("%s", delimiter))
+
+		for i, c := range cmd {
+			stepResult.Outputs[c] = strings.Trim(outputs[i], "\r\n")
+			//stepResult.Outputs[c] = outputs[i]
+		}
+
+		if ok {
+			if err != nil {
+				stepResult.Status = "failed"
+			} else {
+				stepResult.Status = "success"
+			}
+		}
+		return err
 	}
 }
 

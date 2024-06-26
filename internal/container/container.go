@@ -1,7 +1,6 @@
 package container
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"github.com/docker/docker/api/types/container"
@@ -83,7 +82,7 @@ func (c *Container) Start(ctx context.Context) error {
 	return c.client.ContainerStart(ctx, c.ID, container.StartOptions{})
 }
 
-func (c *Container) Exec(ctx context.Context, cmd []string) error {
+func (c *Container) Exec(ctx context.Context, cmd []string) (string, error) {
 	exec, err := c.client.ContainerExecCreate(ctx, c.ID, container.ExecOptions{
 		Cmd:          cmd,
 		AttachStdout: true,
@@ -92,30 +91,30 @@ func (c *Container) Exec(ctx context.Context, cmd []string) error {
 		WorkingDir:   c.inputs.WorkDir,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	resp, err := c.client.ContainerExecAttach(ctx, exec.ID, container.ExecAttachOptions{
 		Tty: true,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	scanner := bufio.NewScanner(resp.Reader)
-	for scanner.Scan() {
-		println(scanner.Text())
+	data, err := io.ReadAll(resp.Reader)
+	if err != nil {
+		return "", err
 	}
 	resp.Close()
 
 	inspectResp, err := c.client.ContainerExecInspect(ctx, exec.ID)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if inspectResp.ExitCode == 0 {
-		return nil
+		return string(data), nil
 	}
-	return fmt.Errorf("exitcode '%d': failure", inspectResp.ExitCode)
+	return "", fmt.Errorf("exitcode '%d': failure", inspectResp.ExitCode)
 }
 
 func (c *Container) Remove(ctx context.Context) error {

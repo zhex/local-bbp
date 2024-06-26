@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github/zhex/bbp/pkg/models"
-	"github/zhex/bbp/pkg/runner"
+	"github/zhex/bbp/internal/models"
+	"github/zhex/bbp/internal/runner"
 	"gopkg.in/yaml.v3"
 	"os"
 )

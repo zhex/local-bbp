@@ -26,6 +26,13 @@ func (s *Step) IsManual() bool {
 	return s.Trigger == StepTriggerManual
 }
 
+func (s *Step) GetName() string {
+	if s.Name == "" {
+		return "default"
+	}
+	return s.Name
+}
+
 func NewStep() *Step {
 	return &Step{
 		Environment: make(map[string]string),
