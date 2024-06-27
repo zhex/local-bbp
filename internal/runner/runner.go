@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"github/zhex/bbp/internal/common"
 	"github/zhex/bbp/internal/container"
 	"github/zhex/bbp/internal/models"
 	"runtime"
 	"strings"
+	"time"
 )
 
 type Runner struct {
@@ -38,13 +40,13 @@ func (r *Runner) Run(name string) {
 		if action.IsParallel() {
 			var parallelTasks []Task
 			for j, subAction := range action.Parallel.Actions {
-				name := fmt.Sprintf("%d.%d - %s", i+1, j+1, subAction.Step.GetName())
+				name := fmt.Sprintf("%d.%d %s", i+1, j+1, subAction.Step.GetName())
 				result.AddStep(name, subAction.Step)
 				parallelTasks = append(parallelTasks, r.newStepTask(name, subAction.Step))
 			}
 			actionTask = NewParallelTask(r.getParallelSize(), parallelTasks...)
 		} else {
-			name := fmt.Sprintf("%d - %s", i+1, action.Step.GetName())
+			name := fmt.Sprintf("%d %s", i+1, action.Step.GetName())
 			result.AddStep(name, action.Step)
 			actionTask = r.newStepTask(name, action.Step)
 		}
@@ -67,7 +69,9 @@ func (r *Runner) Run(name string) {
 			if result.Status == "pending" {
 				result.Status = "success"
 			}
-			PrintResult(result)
+			log.Println("---------------------------------------------")
+			log.Println("Pipeline result: ", common.ColorGreen(result.Status))
+			log.Println("Total Elapsed Time:", result.GetDuration().Round(time.Millisecond).String())
 			return nil
 		})
 		if err := chain(ctx); err != nil {
@@ -99,6 +103,13 @@ func (r *Runner) newStepTask(name string, step *models.Step) Task {
 	}
 
 	t := NewTaskChain(
+		func(ctx context.Context) error {
+			log.Info("Start ", name)
+			result := GetResult(ctx)
+			stepResult, _ := result.StepResults[name]
+			stepResult.StartTime = time.Now()
+			return nil
+		},
 		NewImagePullTask(c, image),
 		NewContainerCreateTask(c, image),
 		NewContainerStartTask(c),
@@ -109,7 +120,20 @@ func (r *Runner) newStepTask(name string, step *models.Step) Task {
 		t = t.Finally(NewContainerExecTask(c, name, step.AfterScript))
 	}
 
-	return t.Finally(NewContainerRemoveTask(c))
+	return t.Finally(NewContainerRemoveTask(c).Then(func(ctx context.Context) error {
+		result := GetResult(ctx)
+		stepResult, _ := result.StepResults[name]
+		stepResult.EndTime = time.Now()
+		d := stepResult.EndTime.Sub(stepResult.StartTime)
+		var status string
+		if stepResult.Status == "failed" {
+			status = common.ColorRed(stepResult.Status)
+		} else {
+			status = common.ColorGreen(stepResult.Status)
+		}
+		log.Infof("End %s [%s] %s", name, status, common.ColorGrey(d.Round(time.Millisecond).String()))
+		return nil
+	}))
 }
 
 func (r *Runner) getParallelSize() int {

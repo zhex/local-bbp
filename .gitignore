@@ -22,4 +22,5 @@
 go.work
 
 bin/
+out/
 .idea/

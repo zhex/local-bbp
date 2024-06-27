@@ -5,6 +5,8 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"github/zhex/bbp/internal/container"
+	"io"
+	"os"
 	"strings"
 )
 
@@ -105,14 +107,18 @@ func NewContainerExecTask(c *container.Container, name string, cmd []string) Tas
 		}
 		log.Debug("executing script")
 
-		delimiter := "||delimiter||"
-		output, err := c.Exec(ctx, []string{"sh", "-ce", strings.Join(cmd, fmt.Sprintf("\necho '%s'\n", delimiter))})
-		outputs := strings.Split(output, fmt.Sprintf("%s", delimiter))
+		err := c.Exec(ctx, []string{"sh", "-ce", strings.Join(cmd, "\n")}, func(reader io.Reader) error {
+			file, err := os.Create(fmt.Sprintf("out/%s.log", name))
+			if err != nil {
+				return err
+			}
+			defer file.Close()
 
-		for i, c := range cmd {
-			stepResult.Outputs[c] = strings.Trim(outputs[i], "\r\n")
-			//stepResult.Outputs[c] = outputs[i]
-		}
+			if _, err := io.Copy(file, reader); err != nil {
+				return err
+			}
+			return nil
+		})
 
 		if ok {
 			if err != nil {

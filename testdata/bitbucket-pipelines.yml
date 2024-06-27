@@ -1,20 +1,28 @@
 pipelines:
   default:
-    - parallel:
-        steps:
-          - step:
-              name: "Parallel 1"
-              script:
-                - echo "parallel 1"
-          - step:
-              name: "Parallel 2"
-              script:
-                - echo "parallel 2"
     - step:
+        name: build
+        image: node:10.15.3
+        script:
+          - echo "npm install"
+          - echo "npm build"
+    - step:
+        name: check
         image: node:10.15.3
         script:
           - export FOO=bar
           - echo "FOO is $FOO"
+          - uname -m
+    - step:
+        name: test
+        image: node:10.15.3
+        script:
+          - echo "npm test"
+    - step:
+        name: deploy
+        image: node:10.15.3
+        script:
+          - echo "docker push"
 
   custom:
     test:

@@ -82,7 +82,7 @@ func (c *Container) Start(ctx context.Context) error {
 	return c.client.ContainerStart(ctx, c.ID, container.StartOptions{})
 }
 
-func (c *Container) Exec(ctx context.Context, cmd []string) (string, error) {
+func (c *Container) Exec(ctx context.Context, cmd []string, outputHandler func(reader io.Reader) error) error {
 	exec, err := c.client.ContainerExecCreate(ctx, c.ID, container.ExecOptions{
 		Cmd:          cmd,
 		AttachStdout: true,
@@ -91,30 +91,30 @@ func (c *Container) Exec(ctx context.Context, cmd []string) (string, error) {
 		WorkingDir:   c.inputs.WorkDir,
 	})
 	if err != nil {
-		return "", err
+		return err
 	}
 	resp, err := c.client.ContainerExecAttach(ctx, exec.ID, container.ExecAttachOptions{
 		Tty: true,
 	})
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	data, err := io.ReadAll(resp.Reader)
-	if err != nil {
-		return "", err
+	if outputHandler != nil {
+		if err := outputHandler(resp.Reader); err != nil {
+			return err
+		}
 	}
-	resp.Close()
 
 	inspectResp, err := c.client.ContainerExecInspect(ctx, exec.ID)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	if inspectResp.ExitCode == 0 {
-		return string(data), nil
+		return nil
 	}
-	return "", fmt.Errorf("exitcode '%d': failure", inspectResp.ExitCode)
+	return fmt.Errorf("exitcode '%d': failure", inspectResp.ExitCode)
 }
 
 func (c *Container) Remove(ctx context.Context) error {

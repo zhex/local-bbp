@@ -2,8 +2,8 @@ package runner
 
 import (
 	"context"
-	"fmt"
 	"github/zhex/bbp/internal/models"
+	"time"
 )
 
 type Result struct {
@@ -29,11 +29,26 @@ func (r *Result) AddStep(name string, step *models.Step) {
 	}
 }
 
+func (r *Result) GetDuration() time.Duration {
+	var start, end time.Time
+	for _, sr := range r.StepResults {
+		if start.IsZero() || sr.StartTime.Before(start) {
+			start = sr.StartTime
+		}
+		if end.IsZero() || sr.EndTime.After(end) {
+			end = sr.EndTime
+		}
+	}
+	return end.Sub(start)
+}
+
 type StepResult struct {
-	Name    string
-	Step    *models.Step
-	Outputs map[string]string
-	Status  string
+	Name      string
+	Step      *models.Step
+	Outputs   map[string]string
+	StartTime time.Time
+	EndTime   time.Time
+	Status    string
 }
 
 func GetResult(ctx context.Context) *Result {
@@ -42,13 +57,4 @@ func GetResult(ctx context.Context) *Result {
 
 func WithResult(ctx context.Context, result *Result) context.Context {
 	return context.WithValue(ctx, "result", result)
-}
-
-func PrintResult(result *Result) {
-	for _, sr := range result.StepResults {
-		fmt.Printf("%s [%s]\n", sr.Name, sr.Status)
-		for k, v := range sr.Outputs {
-			fmt.Printf("  %s\n    %s\n", k, v)
-		}
-	}
 }
