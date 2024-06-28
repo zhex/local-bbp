@@ -23,6 +23,18 @@ pipelines:
         image: node:10.15.3
         script:
           - echo "docker push"
+    - parallel:
+        steps:
+          - step:
+              name: deploy-1
+              image: node:10.15.3
+              script:
+                - echo "docker push"
+          - step:
+              name: deploy-2
+              image: node:10.15.3
+              script:
+                - echo "docker push"
 
   custom:
     test:

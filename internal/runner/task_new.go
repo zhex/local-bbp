@@ -92,10 +92,10 @@ func NewContainerStartTask(c *container.Container) Task {
 	}
 }
 
-func NewContainerExecTask(c *container.Container, name string, cmd []string) Task {
+func NewContainerExecTask(c *container.Container, idx float32, cmd []string) Task {
 	return func(ctx context.Context) error {
 		result := GetResult(ctx)
-		stepResult, ok := result.StepResults[name]
+		stepResult, ok := result.StepResults[idx]
 
 		if len(cmd) == 0 {
 			log.Warn("No script to run")
@@ -108,7 +108,7 @@ func NewContainerExecTask(c *container.Container, name string, cmd []string) Tas
 		log.Debug("executing script")
 
 		err := c.Exec(ctx, []string{"sh", "-ce", strings.Join(cmd, "\n")}, func(reader io.Reader) error {
-			file, err := os.Create(fmt.Sprintf("out/%s.log", name))
+			file, err := os.Create(fmt.Sprintf("out/%s/logs/%s-%s.log", result.ID, stepResult.GetIdxString(), stepResult.Name))
 			if err != nil {
 				return err
 			}

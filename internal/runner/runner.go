@@ -7,6 +7,7 @@ import (
 	"github/zhex/bbp/internal/common"
 	"github/zhex/bbp/internal/container"
 	"github/zhex/bbp/internal/models"
+	"os"
 	"runtime"
 	"strings"
 	"time"
@@ -32,6 +33,10 @@ func (r *Runner) Run(name string) {
 	result := NewResult(name)
 	ctx = WithResult(ctx, result)
 
+	if err := os.MkdirAll(fmt.Sprintf("out/%s/logs", result.ID), 0755); err != nil {
+		log.Fatalf("Error creating output directory: %s", err)
+	}
+
 	var chain Task
 
 	for i, action := range actions {
@@ -40,15 +45,15 @@ func (r *Runner) Run(name string) {
 		if action.IsParallel() {
 			var parallelTasks []Task
 			for j, subAction := range action.Parallel.Actions {
-				name := fmt.Sprintf("%d.%d %s", i+1, j+1, subAction.Step.GetName())
-				result.AddStep(name, subAction.Step)
-				parallelTasks = append(parallelTasks, r.newStepTask(name, subAction.Step))
+				idx := float32(i+1) + float32(j+1)/10
+				sr := result.AddStep(idx, subAction.Step.GetName(), subAction.Step)
+				parallelTasks = append(parallelTasks, r.newStepTask(sr))
 			}
 			actionTask = NewParallelTask(r.getParallelSize(), parallelTasks...)
 		} else {
-			name := fmt.Sprintf("%d %s", i+1, action.Step.GetName())
-			result.AddStep(name, action.Step)
-			actionTask = r.newStepTask(name, action.Step)
+			idx := float32(i + 1)
+			sr := result.AddStep(idx, action.Step.GetName(), action.Step)
+			actionTask = r.newStepTask(sr)
 		}
 
 		if chain == nil {
@@ -70,7 +75,7 @@ func (r *Runner) Run(name string) {
 				result.Status = "success"
 			}
 			log.Println("---------------------------------------------")
-			log.Println("Pipeline result: ", common.ColorGreen(result.Status))
+			log.Println("Pipeline result: ", getColoredStatus(result.Status))
 			log.Println("Total Elapsed Time:", result.GetDuration().Round(time.Millisecond).String())
 			return nil
 		})
@@ -90,7 +95,7 @@ func (r *Runner) getPipeline(name string) []*models.Action {
 	return nil
 }
 
-func (r *Runner) newStepTask(name string, step *models.Step) Task {
+func (r *Runner) newStepTask(sr *StepResult) Task {
 	c := container.NewContainer(
 		&container.Input{
 			WorkDir: r.config.WorkDir,
@@ -98,40 +103,34 @@ func (r *Runner) newStepTask(name string, step *models.Step) Task {
 	)
 
 	image := r.config.DefaultImage
-	if step.Image != "" {
-		image = step.Image
+	if sr.Step.Image != "" {
+		image = sr.Step.Image
 	}
 
 	t := NewTaskChain(
 		func(ctx context.Context) error {
-			log.Info("Start ", name)
+			log.Info("Start ", sr.Name)
 			result := GetResult(ctx)
-			stepResult, _ := result.StepResults[name]
+			stepResult, _ := result.StepResults[sr.Index]
 			stepResult.StartTime = time.Now()
 			return nil
 		},
 		NewImagePullTask(c, image),
 		NewContainerCreateTask(c, image),
 		NewContainerStartTask(c),
-		NewContainerExecTask(c, name, step.Script),
+		NewContainerExecTask(c, sr.Index, sr.Step.Script),
 	)
 
-	if len(step.AfterScript) > 0 {
-		t = t.Finally(NewContainerExecTask(c, name, step.AfterScript))
+	if len(sr.Step.AfterScript) > 0 {
+		t = t.Finally(NewContainerExecTask(c, sr.Index, sr.Step.AfterScript))
 	}
 
 	return t.Finally(NewContainerRemoveTask(c).Then(func(ctx context.Context) error {
 		result := GetResult(ctx)
-		stepResult, _ := result.StepResults[name]
+		stepResult, _ := result.StepResults[sr.Index]
 		stepResult.EndTime = time.Now()
 		d := stepResult.EndTime.Sub(stepResult.StartTime)
-		var status string
-		if stepResult.Status == "failed" {
-			status = common.ColorRed(stepResult.Status)
-		} else {
-			status = common.ColorGreen(stepResult.Status)
-		}
-		log.Infof("End %s [%s] %s", name, status, common.ColorGrey(d.Round(time.Millisecond).String()))
+		log.Infof("End %s [%s] %s", sr.Name, getColoredStatus(stepResult.Status), common.ColorGrey(d.Round(time.Millisecond).String()))
 		return nil
 	}))
 }
@@ -142,4 +141,15 @@ func (r *Runner) getParallelSize() int {
 		ncpu = 1
 	}
 	return ncpu
+}
+
+func getColoredStatus(status string) string {
+	switch status {
+	case "success":
+		return common.ColorGreen(status)
+	case "failed":
+		return common.ColorRed(status)
+	default:
+		return common.ColorGrey(status)
+	}
 }
