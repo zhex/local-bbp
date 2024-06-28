@@ -7,7 +7,10 @@ import (
 	"github/zhex/bbp/internal/common"
 	"github/zhex/bbp/internal/container"
 	"github/zhex/bbp/internal/models"
+	"gopkg.in/yaml.v3"
 	"os"
+	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -18,11 +21,31 @@ type Runner struct {
 	Config *Config
 }
 
-func NewRunner(plan *models.Plan) *Runner {
-	return &Runner{Plan: plan, Config: NewConfig()}
+func New(project string) *Runner {
+	c := NewConfig()
+	fullPath, _ := filepath.Abs(project)
+	c.HostProjectPath = fullPath
+	return &Runner{Config: c}
+}
+
+func (r *Runner) LoadPlan() error {
+	data, err := os.ReadFile(path.Join(r.Config.HostProjectPath, "bitbucket-pipelines.yml"))
+	if err != nil {
+		return err
+	}
+	err = yaml.Unmarshal(data, &r.Plan)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *Runner) Run(name string) {
+	if r.Plan == nil {
+		if err := r.LoadPlan(); err != nil {
+			log.Fatalf("Error loading plan: %s", err)
+		}
+	}
 	actions := r.getPipeline(name)
 	if actions == nil {
 		log.Fatalf("No pipeline [%s] found", name)
@@ -103,6 +126,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 
 	c := container.NewContainer(
 		&container.Input{
+			HostDir: r.Config.HostProjectPath,
 			WorkDir: r.Config.WorkDir,
 			Image:   image,
 		},

@@ -56,12 +56,11 @@ func (c *Container) Create(ctx context.Context) error {
 		Tty:   true,
 	}
 
-	wd, _ := os.Getwd()
 	hostConf := &container.HostConfig{
 		Mounts: []mount.Mount{
 			{
 				Type:   mount.TypeBind,
-				Source: wd,
+				Source: c.Inputs.HostDir,
 				Target: c.Inputs.WorkDir,
 			},
 		},

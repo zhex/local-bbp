@@ -40,6 +40,12 @@ You can also specify a specific pipeline to run using the -n flag:
 bbp -n my-pipeline
 ```
 
+You can also specify a path to the project directory containing the bitbucket-pipelines.yml file:
+
+```bash
+bbp -p /path/to/project
+```
+
 ## License
 
 Local-BBP is released under the MIT License. See [LICENSE](LICENSE) for more details.

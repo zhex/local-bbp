@@ -24,3 +24,5 @@ go.work
 bin/
 bbp/
 .idea/
+
+.DS_Store
