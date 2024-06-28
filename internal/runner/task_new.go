@@ -65,9 +65,9 @@ func NewParallelTask(size int, tasks ...Task) Task {
 	}
 }
 
-func NewImagePullTask(c *container.Container, image string) Task {
+func NewImagePullTask(c *container.Container) Task {
 	return func(ctx context.Context) error {
-		exists, err := c.IsImageExists(ctx, image)
+		exists, err := c.IsImageExists(ctx)
 		if err != nil {
 			return err
 		}
@@ -75,14 +75,14 @@ func NewImagePullTask(c *container.Container, image string) Task {
 			return nil
 		}
 		log.Debug("pulling image")
-		return c.Pull(ctx, image)
+		return c.Pull(ctx)
 	}
 }
 
-func NewContainerCreateTask(c *container.Container, image string) Task {
+func NewContainerCreateTask(c *container.Container) Task {
 	return func(ctx context.Context) error {
 		log.Debug("creating container")
-		return c.Create(ctx, image)
+		return c.Create(ctx)
 	}
 }
 
@@ -108,7 +108,8 @@ func NewContainerExecTask(c *container.Container, idx float32, cmd []string) Tas
 		log.Debug("executing script")
 
 		err := c.Exec(ctx, []string{"sh", "-ce", strings.Join(cmd, "\n")}, func(reader io.Reader) error {
-			file, err := os.Create(fmt.Sprintf("out/%s/logs/%s-%s.log", result.ID, stepResult.GetIdxString(), stepResult.Name))
+			logPath := fmt.Sprintf("%s/logs/%s-%s.log", result.GetOutputPath(), stepResult.GetIdxString(), stepResult.Name)
+			file, err := os.Create(logPath)
 			if err != nil {
 				return err
 			}

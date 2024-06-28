@@ -1,8 +1,11 @@
 package common
 
-import gonanoid "github.com/matoous/go-nanoid/v2"
+import (
+	"strconv"
+	"time"
+)
 
 func NewID(prefix string) string {
-	id, _ := gonanoid.Generate("1234567890abcdefghijklmnopqrstuvwxyz", 8)
+	id := strconv.FormatInt(time.Now().Unix(), 10)
 	return prefix + id
 }

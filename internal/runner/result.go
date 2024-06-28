@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github/zhex/bbp/internal/common"
 	"github/zhex/bbp/internal/models"
+	"strings"
 	"time"
 )
 
@@ -13,14 +14,16 @@ type Result struct {
 	EventName   string
 	StepResults map[float32]*StepResult
 	Status      string
+	Runner      *Runner
 }
 
-func NewResult(name string) *Result {
+func NewResult(name string, r *Runner) *Result {
 	return &Result{
 		ID:          common.NewID("r-"),
 		EventName:   name,
 		StepResults: make(map[float32]*StepResult),
 		Status:      "pending",
+		Runner:      r,
 	}
 }
 
@@ -49,6 +52,10 @@ func (r *Result) GetDuration() time.Duration {
 	return end.Sub(start)
 }
 
+func (r *Result) GetOutputPath() string {
+	return fmt.Sprintf("%s/%s", r.Runner.Config.OutputDir, r.ID)
+}
+
 type StepResult struct {
 	Index     float32
 	Name      string
@@ -60,10 +67,11 @@ type StepResult struct {
 }
 
 func (sr *StepResult) GetIdxString() string {
-	if (sr.Index - float32(int(sr.Index))) == 0 {
+	rest := sr.Index - float32(int(sr.Index))
+	if rest == 0 {
 		return fmt.Sprintf("%d", int(sr.Index))
 	}
-	return fmt.Sprintf("%.1f", sr.Index)
+	return strings.Trim(fmt.Sprintf("%f", sr.Index), "0")
 }
 
 func GetResult(ctx context.Context) *Result {

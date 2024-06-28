@@ -14,12 +14,12 @@ import (
 )
 
 type Runner struct {
-	plan   *models.Plan
-	config *Config
+	Plan   *models.Plan
+	Config *Config
 }
 
 func NewRunner(plan *models.Plan) *Runner {
-	return &Runner{plan: plan, config: NewConfig()}
+	return &Runner{Plan: plan, Config: NewConfig()}
 }
 
 func (r *Runner) Run(name string) {
@@ -30,10 +30,10 @@ func (r *Runner) Run(name string) {
 
 	ctx := context.Background()
 
-	result := NewResult(name)
+	result := NewResult(name, r)
 	ctx = WithResult(ctx, result)
 
-	if err := os.MkdirAll(fmt.Sprintf("out/%s/logs", result.ID), 0755); err != nil {
+	if err := os.MkdirAll(fmt.Sprintf("%s/logs", result.GetOutputPath()), 0755); err != nil {
 		log.Fatalf("Error creating output directory: %s", err)
 	}
 
@@ -87,25 +87,26 @@ func (r *Runner) Run(name string) {
 
 func (r *Runner) getPipeline(name string) []*models.Action {
 	if strings.ToLower(name) == "default" || len(name) == 0 {
-		return r.plan.Pipelines.Default
+		return r.Plan.Pipelines.Default
 	}
-	if _, ok := r.plan.Pipelines.Custom[name]; ok {
-		return r.plan.Pipelines.Custom[name]
+	if _, ok := r.Plan.Pipelines.Custom[name]; ok {
+		return r.Plan.Pipelines.Custom[name]
 	}
 	return nil
 }
 
 func (r *Runner) newStepTask(sr *StepResult) Task {
-	c := container.NewContainer(
-		&container.Input{
-			WorkDir: r.config.WorkDir,
-		},
-	)
-
-	image := r.config.DefaultImage
+	image := r.Config.DefaultImage
 	if sr.Step.Image != "" {
 		image = sr.Step.Image
 	}
+
+	c := container.NewContainer(
+		&container.Input{
+			WorkDir: r.Config.WorkDir,
+			Image:   image,
+		},
+	)
 
 	t := NewTaskChain(
 		func(ctx context.Context) error {
@@ -115,8 +116,8 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 			stepResult.StartTime = time.Now()
 			return nil
 		},
-		NewImagePullTask(c, image),
-		NewContainerCreateTask(c, image),
+		NewImagePullTask(c),
+		NewContainerCreateTask(c),
 		NewContainerStartTask(c),
 		NewContainerExecTask(c, sr.Index, sr.Step.Script),
 	)

@@ -19,18 +19,18 @@ type Container struct {
 	ID     string
 	UID    int
 	GID    int
-	inputs *Input
+	Inputs *Input
 }
 
 func NewContainer(inputs *Input) *Container {
 	return &Container{
 		client: dockerClient,
-		inputs: inputs,
+		Inputs: inputs,
 	}
 }
 
-func (c *Container) IsImageExists(ctx context.Context, image string) (bool, error) {
-	_, _, err := c.client.ImageInspectWithRaw(ctx, image)
+func (c *Container) IsImageExists(ctx context.Context) (bool, error) {
+	_, _, err := c.client.ImageInspectWithRaw(ctx, c.Inputs.Image)
 	if err != nil {
 		if client.IsErrNotFound(err) {
 			return false, nil
@@ -40,8 +40,8 @@ func (c *Container) IsImageExists(ctx context.Context, image string) (bool, erro
 	return true, nil
 }
 
-func (c *Container) Pull(ctx context.Context, image string) error {
-	reader, err := c.client.ImagePull(ctx, image, image2.PullOptions{})
+func (c *Container) Pull(ctx context.Context) error {
+	reader, err := c.client.ImagePull(ctx, c.Inputs.Image, image2.PullOptions{})
 	if err != nil {
 		return err
 	}
@@ -50,9 +50,9 @@ func (c *Container) Pull(ctx context.Context, image string) error {
 	return err
 }
 
-func (c *Container) Create(ctx context.Context, image string) error {
+func (c *Container) Create(ctx context.Context) error {
 	conf := &container.Config{
-		Image: image,
+		Image: c.Inputs.Image,
 		Tty:   true,
 	}
 
@@ -62,7 +62,7 @@ func (c *Container) Create(ctx context.Context, image string) error {
 			{
 				Type:   mount.TypeBind,
 				Source: wd,
-				Target: c.inputs.WorkDir,
+				Target: c.Inputs.WorkDir,
 			},
 		},
 	}
@@ -88,7 +88,7 @@ func (c *Container) Exec(ctx context.Context, cmd []string, outputHandler func(r
 		AttachStdout: true,
 		AttachStderr: true,
 		Tty:          true,
-		WorkingDir:   c.inputs.WorkDir,
+		WorkingDir:   c.Inputs.WorkDir,
 	})
 	if err != nil {
 		return err
