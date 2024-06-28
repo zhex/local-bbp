@@ -10,7 +10,6 @@ import (
 	"github.com/docker/docker/client"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"io"
-	"math/rand"
 	"os"
 )
 
@@ -68,8 +67,7 @@ func (c *Container) Create(ctx context.Context) error {
 	plat := &v1.Platform{}
 	networkConf := &network.NetworkingConfig{}
 
-	name := fmt.Sprintf("test-%d", rand.Intn(1000))
-	cr, err := c.client.ContainerCreate(ctx, conf, hostConf, networkConf, plat, name)
+	cr, err := c.client.ContainerCreate(ctx, conf, hostConf, networkConf, plat, c.Inputs.Name)
 	if err != nil {
 		return err
 	}

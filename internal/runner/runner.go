@@ -126,9 +126,10 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 
 	c := container.NewContainer(
 		&container.Input{
+			Name:    fmt.Sprintf("bbp_%s_%s", sr.Result.ID, sr.Name),
+			Image:   image,
 			HostDir: r.Config.HostProjectPath,
 			WorkDir: r.Config.WorkDir,
-			Image:   image,
 		},
 	)
 

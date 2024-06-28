@@ -34,6 +34,7 @@ func (r *Result) AddStep(idx float32, name string, step *models.Step) *StepResul
 		Step:    step,
 		Outputs: make(map[string]string),
 		Status:  "pending",
+		Result:  r,
 	}
 	r.StepResults[idx] = sr
 	return sr
@@ -64,6 +65,7 @@ type StepResult struct {
 	StartTime time.Time
 	EndTime   time.Time
 	Status    string
+	Result    *Result
 }
 
 func (sr *StepResult) GetIdxString() string {
