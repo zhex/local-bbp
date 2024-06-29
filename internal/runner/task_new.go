@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github/zhex/bbp/internal/common"
 	"github/zhex/bbp/internal/container"
@@ -97,7 +98,7 @@ func NewContainerStartTask(c *container.Container) Task {
 func NewContainerCloneTask(c *container.Container) Task {
 	return func(ctx context.Context) error {
 		log.Debug("prepare workdir ", c.Inputs.WorkDir)
-		cmd := []string{"sh", "-ce", fmt.Sprintf("mkdir -p %s", c.Inputs.WorkDir)}
+		cmd := []string{"sh", "-ce", fmt.Sprintf("mkdir -p %s && sync", c.Inputs.WorkDir)}
 		if err := c.Exec(ctx, "", cmd, nil); err != nil {
 			return err
 		}
@@ -113,7 +114,6 @@ func NewContainerCloneTask(c *container.Container) Task {
 		}
 		return c.CopyToContainer(ctx, c.Inputs.HostDir, c.Inputs.WorkDir, excludePatterns)
 	}
-
 }
 
 func NewContainerExecTask(c *container.Container, idx float32, cmd []string) Task {
@@ -154,6 +154,56 @@ func NewContainerExecTask(c *container.Container, idx float32, cmd []string) Tas
 			}
 		}
 		return err
+	}
+}
+
+func NewContainerDownloadArtifactsTask(c *container.Container) Task {
+	return func(ctx context.Context) error {
+		result := GetResult(ctx)
+		if len(result.Artifacts) == 0 {
+			return nil
+		}
+		log.Debug("downloading artifacts")
+
+		for id, _ := range result.Artifacts {
+			source := path.Join(result.GetOutputPath(), "artifacts", id)
+			err := c.CopyToContainer(ctx, source, c.Inputs.WorkDir, []string{})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+}
+
+func NewContainerSaveArtifactsTask(c *container.Container, idx float32) Task {
+	return func(ctx context.Context) error {
+		result := GetResult(ctx)
+		stepResult, _ := result.StepResults[idx]
+
+		if stepResult.Step.Artifacts == nil || len(stepResult.Step.Artifacts.Paths) == 0 {
+			return nil
+		}
+
+		log.Debug("saving artifacts")
+		for _, source := range stepResult.Step.Artifacts.Paths {
+			if source == "" {
+				continue
+			}
+			id, _ := uuid.NewUUID()
+			target := path.Join(result.GetOutputPath(), "artifacts", id.String())
+			if err := os.MkdirAll(target, 0755); err != nil {
+				return fmt.Errorf("failed to create target directory: %w", err)
+			}
+			err := c.CopyToHost(ctx, source, target)
+			if err != nil {
+				return err
+			}
+			result.Artifacts[id.String()] = source
+		}
+		return nil
 	}
 }
 

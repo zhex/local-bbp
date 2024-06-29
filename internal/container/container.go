@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"time"
 )
 
 type Container struct {
@@ -77,7 +78,7 @@ func (c *Container) Exec(ctx context.Context, workdir string, cmd []string, outp
 		Cmd:          cmd,
 		AttachStdout: true,
 		AttachStderr: true,
-		Tty:          true,
+		Tty:          false,
 		WorkingDir:   workdir,
 	})
 	if err != nil {
@@ -96,15 +97,20 @@ func (c *Container) Exec(ctx context.Context, workdir string, cmd []string, outp
 		}
 	}
 
-	inspectResp, err := c.client.ContainerExecInspect(ctx, exec.ID)
-	if err != nil {
-		return err
-	}
+	for {
+		inspectResp, err := c.client.ContainerExecInspect(ctx, exec.ID)
+		if err != nil {
+			return err
+		}
 
-	if inspectResp.ExitCode == 0 {
-		return nil
+		if !inspectResp.Running {
+			if inspectResp.ExitCode == 0 {
+				return nil
+			}
+			return fmt.Errorf("exitcode '%d': failure", inspectResp.ExitCode)
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
-	return fmt.Errorf("exitcode '%d': failure", inspectResp.ExitCode)
 }
 
 func (c *Container) Remove(ctx context.Context) error {
@@ -127,31 +133,16 @@ func (c *Container) CopyToContainer(ctx context.Context, source, target string, 
 	return c.client.CopyToContainer(ctx, c.ID, target, tarStream, container.CopyToContainerOptions{})
 }
 
-func (c *Container) SaveArtifacts(ctx context.Context, targetDir string) error {
-	if len(c.Inputs.Artifacts) == 0 {
-		return nil
-	}
-	for _, artifact := range c.Inputs.Artifacts {
-		reader, _, err := c.client.CopyFromContainer(ctx, c.ID, artifact)
-		if err != nil {
-			return err
-		}
-
-		file := path.Join(targetDir, artifact)
-		writer, err := os.Create(file)
-		if err != nil {
-			_ = reader.Close()
-			return err
-		}
-		_, err = io.Copy(writer, reader)
-
-		_ = reader.Close()
-		_ = writer.Close()
-
+func (c *Container) CopyToHost(ctx context.Context, source, target string) error {
+	reader, _, err := c.client.CopyFromContainer(ctx, c.ID, path.Join(c.Inputs.WorkDir, source))
+	if err != nil {
 		return err
 	}
+	defer reader.Close()
 
-	return nil
+	return archive.Untar(reader, target, &archive.TarOptions{
+		NoLchown: true,
+	})
 }
 
 func (c *Container) wait(ctx context.Context) error {

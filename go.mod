@@ -5,6 +5,7 @@ go 1.22.3
 require (
 	github.com/docker/docker v27.0.0+incompatible
 	github.com/fatih/color v1.17.0
+	github.com/google/uuid v1.3.1
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1

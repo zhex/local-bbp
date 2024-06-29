@@ -60,6 +60,10 @@ func (r *Runner) Run(name string) {
 		log.Fatalf("Error creating output directory: %s", err)
 	}
 
+	if err := os.MkdirAll(fmt.Sprintf("%s/artifacts", result.GetOutputPath()), 0755); err != nil {
+		log.Fatalf("Error creating artifacts directory: %s", err)
+	}
+
 	var chain Task
 
 	for i, action := range actions {
@@ -145,7 +149,9 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 		NewContainerCreateTask(c),
 		NewContainerStartTask(c),
 		NewContainerCloneTask(c),
+		NewContainerDownloadArtifactsTask(c),
 		NewContainerExecTask(c, sr.Index, sr.Step.Script),
+		NewContainerSaveArtifactsTask(c, sr.Index),
 	)
 
 	if len(sr.Step.AfterScript) > 0 {

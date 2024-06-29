@@ -15,6 +15,7 @@ type Result struct {
 	StepResults map[float32]*StepResult
 	Status      string
 	Runner      *Runner
+	Artifacts   map[string]string
 }
 
 func NewResult(name string, r *Runner) *Result {
@@ -24,6 +25,7 @@ func NewResult(name string, r *Runner) *Result {
 		StepResults: make(map[float32]*StepResult),
 		Status:      "pending",
 		Runner:      r,
+		Artifacts:   make(map[string]string),
 	}
 }
 

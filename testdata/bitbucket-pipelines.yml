@@ -3,7 +3,16 @@ pipelines:
     - step:
         name: build
         script:
-          - ls
+          - echo "Hello, World!" > builder.txt
+          - echo "Hello, Docker" > docker.txt
+        artifacts:
+          - builder.txt
+          - docker.txt
+    - step:
+        name: display
+        script:
+          - cat builder.txt
+          - cat docker.txt
 
   custom:
     test:
