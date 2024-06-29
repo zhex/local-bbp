@@ -124,9 +124,7 @@ func (c *Container) CopyToContainer(ctx context.Context, source, target string, 
 		return err
 	}
 	defer tarStream.Close()
-	return c.client.CopyToContainer(ctx, c.ID, target, tarStream, container.CopyToContainerOptions{
-		AllowOverwriteDirWithFile: true,
-	})
+	return c.client.CopyToContainer(ctx, c.ID, target, tarStream, container.CopyToContainerOptions{})
 }
 
 func (c *Container) SaveArtifacts(ctx context.Context, targetDir string) error {

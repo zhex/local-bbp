@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"github/zhex/bbp/internal/common"
 	"github/zhex/bbp/internal/container"
 	"io"
 	"os"
+	"path"
 	"strings"
 )
 
@@ -100,7 +102,16 @@ func NewContainerCloneTask(c *container.Container) Task {
 			return err
 		}
 		log.Debug("cloning container")
-		return c.CopyToContainer(ctx, c.Inputs.HostDir, c.Inputs.WorkDir, []string{})
+		excludePatterns := []string{}
+		ignoreFile := path.Join(c.Inputs.HostDir, ".gitignore")
+		if common.IsFileExists(ignoreFile) {
+			data, err := os.ReadFile(ignoreFile)
+			if err != nil {
+				return err
+			}
+			excludePatterns = strings.Split(string(data), "\n")
+		}
+		return c.CopyToContainer(ctx, c.Inputs.HostDir, c.Inputs.WorkDir, excludePatterns)
 	}
 
 }
