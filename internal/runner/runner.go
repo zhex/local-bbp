@@ -144,6 +144,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 		NewImagePullTask(c),
 		NewContainerCreateTask(c),
 		NewContainerStartTask(c),
+		NewContainerCloneTask(c),
 		NewContainerExecTask(c, sr.Index, sr.Step.Script),
 	)
 

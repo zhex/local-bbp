@@ -11,7 +11,7 @@ func NewConfig() *Config {
 	return &Config{
 		HostProjectPath: ".",
 		DefaultImage:    "atlassian/default-image:4",
-		WorkDir:         "/project",
+		WorkDir:         "/opt/atlassian/pipelines/agent/build",
 		OutputDir:       "./bbp",
 	}
 }

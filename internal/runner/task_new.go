@@ -92,6 +92,19 @@ func NewContainerStartTask(c *container.Container) Task {
 	}
 }
 
+func NewContainerCloneTask(c *container.Container) Task {
+	return func(ctx context.Context) error {
+		log.Debug("prepare workdir ", c.Inputs.WorkDir)
+		cmd := []string{"sh", "-ce", fmt.Sprintf("mkdir -p %s", c.Inputs.WorkDir)}
+		if err := c.Exec(ctx, "", cmd, nil); err != nil {
+			return err
+		}
+		log.Debug("cloning container")
+		return c.CopyToContainer(ctx, c.Inputs.HostDir, c.Inputs.WorkDir, []string{})
+	}
+
+}
+
 func NewContainerExecTask(c *container.Container, idx float32, cmd []string) Task {
 	return func(ctx context.Context) error {
 		result := GetResult(ctx)
@@ -107,7 +120,8 @@ func NewContainerExecTask(c *container.Container, idx float32, cmd []string) Tas
 		}
 		log.Debug("executing script")
 
-		err := c.Exec(ctx, []string{"sh", "-ce", strings.Join(cmd, "\n")}, func(reader io.Reader) error {
+		cmd = []string{"sh", "-ce", strings.Join(cmd, "\n")}
+		err := c.Exec(ctx, c.Inputs.WorkDir, cmd, func(reader io.Reader) error {
 			logPath := fmt.Sprintf("%s/logs/%s-%s.log", result.GetOutputPath(), stepResult.GetIdxString(), stepResult.Name)
 			file, err := os.Create(logPath)
 			if err != nil {

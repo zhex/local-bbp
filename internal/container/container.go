@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/docker/docker/api/types/container"
-	image2 "github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/archive"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"io"
 	"os"
+	"path"
 )
 
 type Container struct {
@@ -40,7 +41,7 @@ func (c *Container) IsImageExists(ctx context.Context) (bool, error) {
 }
 
 func (c *Container) Pull(ctx context.Context) error {
-	reader, err := c.client.ImagePull(ctx, c.Inputs.Image, image2.PullOptions{})
+	reader, err := c.client.ImagePull(ctx, c.Inputs.Image, image.PullOptions{})
 	if err != nil {
 		return err
 	}
@@ -55,15 +56,7 @@ func (c *Container) Create(ctx context.Context) error {
 		Tty:   true,
 	}
 
-	hostConf := &container.HostConfig{
-		Mounts: []mount.Mount{
-			{
-				Type:   mount.TypeBind,
-				Source: c.Inputs.HostDir,
-				Target: c.Inputs.WorkDir,
-			},
-		},
-	}
+	hostConf := &container.HostConfig{}
 	plat := &v1.Platform{}
 	networkConf := &network.NetworkingConfig{}
 
@@ -79,13 +72,13 @@ func (c *Container) Start(ctx context.Context) error {
 	return c.client.ContainerStart(ctx, c.ID, container.StartOptions{})
 }
 
-func (c *Container) Exec(ctx context.Context, cmd []string, outputHandler func(reader io.Reader) error) error {
+func (c *Container) Exec(ctx context.Context, workdir string, cmd []string, outputHandler func(reader io.Reader) error) error {
 	exec, err := c.client.ContainerExecCreate(ctx, c.ID, container.ExecOptions{
 		Cmd:          cmd,
 		AttachStdout: true,
 		AttachStderr: true,
 		Tty:          true,
-		WorkingDir:   c.Inputs.WorkDir,
+		WorkingDir:   workdir,
 	})
 	if err != nil {
 		return err
@@ -121,6 +114,46 @@ func (c *Container) Remove(ctx context.Context) error {
 	return c.client.ContainerRemove(ctx, c.ID, container.RemoveOptions{
 		Force: true,
 	})
+}
+
+func (c *Container) CopyToContainer(ctx context.Context, source, target string, excludePatterns []string) error {
+	tarStream, err := archive.TarWithOptions(source, &archive.TarOptions{
+		ExcludePatterns: excludePatterns,
+	})
+	if err != nil {
+		return err
+	}
+	defer tarStream.Close()
+	return c.client.CopyToContainer(ctx, c.ID, target, tarStream, container.CopyToContainerOptions{
+		AllowOverwriteDirWithFile: true,
+	})
+}
+
+func (c *Container) SaveArtifacts(ctx context.Context, targetDir string) error {
+	if len(c.Inputs.Artifacts) == 0 {
+		return nil
+	}
+	for _, artifact := range c.Inputs.Artifacts {
+		reader, _, err := c.client.CopyFromContainer(ctx, c.ID, artifact)
+		if err != nil {
+			return err
+		}
+
+		file := path.Join(targetDir, artifact)
+		writer, err := os.Create(file)
+		if err != nil {
+			_ = reader.Close()
+			return err
+		}
+		_, err = io.Copy(writer, reader)
+
+		_ = reader.Close()
+		_ = writer.Close()
+
+		return err
+	}
+
+	return nil
 }
 
 func (c *Container) wait(ctx context.Context) error {

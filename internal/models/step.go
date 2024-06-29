@@ -15,7 +15,7 @@ type Step struct {
 	Size        string            `yaml:"size"`
 	Deployment  string            `yaml:"deployment"`
 	Trigger     StepTrigger       `yaml:"trigger"`
-	Artifacts   []string          `yaml:"artifacts"`
+	Artifacts   *Artifact         `yaml:"artifacts"`
 	Caches      []string          `yaml:"caches"`
 	Services    []string          `yaml:"services"`
 	RunsOn      []string          `yaml:"runs-on"`
@@ -36,7 +36,6 @@ func (s *Step) GetName() string {
 func NewStep() *Step {
 	return &Step{
 		Environment: make(map[string]string),
-		Artifacts:   make([]string, 0),
 		Caches:      make([]string, 0),
 		Services:    make([]string, 0),
 		MaxTime:     60,
