@@ -14,7 +14,7 @@ func (a *Artifact) UnmarshalYAML(node *yaml.Node) error {
 	var stringList []string
 	if err := node.Decode(&stringList); err == nil {
 		a.Paths = stringList
-		a.Download = false
+		a.Download = true
 		return nil
 	}
 

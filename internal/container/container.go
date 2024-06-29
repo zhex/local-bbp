@@ -78,7 +78,7 @@ func (c *Container) Exec(ctx context.Context, workdir string, cmd []string, outp
 		Cmd:          cmd,
 		AttachStdout: true,
 		AttachStderr: true,
-		Tty:          false,
+		Tty:          true,
 		WorkingDir:   workdir,
 	})
 	if err != nil {

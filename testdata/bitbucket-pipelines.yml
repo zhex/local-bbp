@@ -13,6 +13,8 @@ pipelines:
         script:
           - cat builder.txt
           - cat docker.txt
+        artifacts:
+          download: false
 
   custom:
     test:

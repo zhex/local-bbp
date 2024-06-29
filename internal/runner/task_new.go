@@ -116,24 +116,21 @@ func NewContainerCloneTask(c *container.Container) Task {
 	}
 }
 
-func NewContainerExecTask(c *container.Container, idx float32, cmd []string) Task {
+func NewContainerExecTask(c *container.Container, sr *StepResult, cmd []string) Task {
 	return func(ctx context.Context) error {
 		result := GetResult(ctx)
-		stepResult, ok := result.StepResults[idx]
 
 		if len(cmd) == 0 {
 			log.Warn("No script to run")
-			if ok {
-				stepResult.Outputs["script"] = "No script to run"
-				stepResult.Status = "success"
-			}
+			sr.Outputs["script"] = "No script to run"
+			sr.Status = "success"
 			return nil
 		}
 		log.Debug("executing script")
 
 		cmd = []string{"sh", "-ce", strings.Join(cmd, "\n")}
 		err := c.Exec(ctx, c.Inputs.WorkDir, cmd, func(reader io.Reader) error {
-			logPath := fmt.Sprintf("%s/logs/%s-%s.log", result.GetOutputPath(), stepResult.GetIdxString(), stepResult.Name)
+			logPath := fmt.Sprintf("%s/logs/%s-%s.log", result.GetOutputPath(), sr.GetIdxString(), sr.Name)
 			file, err := os.Create(logPath)
 			if err != nil {
 				return err
@@ -146,21 +143,20 @@ func NewContainerExecTask(c *container.Container, idx float32, cmd []string) Tas
 			return nil
 		})
 
-		if ok {
-			if err != nil {
-				stepResult.Status = "failed"
-			} else {
-				stepResult.Status = "success"
-			}
+		if err != nil {
+			sr.Status = "failed"
+		} else {
+			sr.Status = "success"
 		}
 		return err
 	}
 }
 
-func NewContainerDownloadArtifactsTask(c *container.Container) Task {
+func NewContainerDownloadArtifactsTask(c *container.Container, sr *StepResult) Task {
 	return func(ctx context.Context) error {
 		result := GetResult(ctx)
-		if len(result.Artifacts) == 0 {
+
+		if len(result.Artifacts) == 0 || (sr.Step.Artifacts != nil && !sr.Step.Artifacts.Download) {
 			return nil
 		}
 		log.Debug("downloading artifacts")
@@ -178,17 +174,16 @@ func NewContainerDownloadArtifactsTask(c *container.Container) Task {
 
 }
 
-func NewContainerSaveArtifactsTask(c *container.Container, idx float32) Task {
+func NewContainerSaveArtifactsTask(c *container.Container, sr *StepResult) Task {
 	return func(ctx context.Context) error {
 		result := GetResult(ctx)
-		stepResult, _ := result.StepResults[idx]
 
-		if stepResult.Step.Artifacts == nil || len(stepResult.Step.Artifacts.Paths) == 0 {
+		if sr.Step.Artifacts == nil || len(sr.Step.Artifacts.Paths) == 0 {
 			return nil
 		}
 
 		log.Debug("saving artifacts")
-		for _, source := range stepResult.Step.Artifacts.Paths {
+		for _, source := range sr.Step.Artifacts.Paths {
 			if source == "" {
 				continue
 			}
