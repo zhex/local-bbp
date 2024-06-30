@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
@@ -52,12 +54,32 @@ func (c *Container) Pull(ctx context.Context) error {
 }
 
 func (c *Container) Create(ctx context.Context) error {
+	var envs []string
+	for k, v := range c.Inputs.Envs {
+		envs = append(envs, fmt.Sprintf("%s=%s", k, v))
+	}
 	conf := &container.Config{
 		Image: c.Inputs.Image,
 		Tty:   true,
+		Env:   envs,
 	}
 
-	hostConf := &container.HostConfig{}
+	vol, err := c.client.VolumeCreate(ctx, volume.CreateOptions{
+		Name: fmt.Sprintf("vol_%s", c.Inputs.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	hostConf := &container.HostConfig{
+		Mounts: []mount.Mount{
+			{
+				Source: vol.Name,
+				Target: c.Inputs.WorkDir,
+				Type:   mount.TypeVolume,
+			},
+		},
+	}
 	plat := &v1.Platform{}
 	networkConf := &network.NetworkingConfig{}
 
@@ -117,9 +139,14 @@ func (c *Container) Remove(ctx context.Context) error {
 	if c.ID == "" {
 		return nil
 	}
-	return c.client.ContainerRemove(ctx, c.ID, container.RemoveOptions{
+	err := c.client.ContainerRemove(ctx, c.ID, container.RemoveOptions{
 		Force: true,
 	})
+	if err != nil {
+		return err
+	}
+	volName := fmt.Sprintf("vol_%s", c.Inputs.Name)
+	return c.client.VolumeRemove(ctx, volName, true)
 }
 
 func (c *Container) CopyToContainer(ctx context.Context, source, target string, excludePatterns []string) error {

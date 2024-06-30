@@ -183,8 +183,8 @@ func NewContainerSaveArtifactsTask(c *container.Container, sr *StepResult) Task 
 		}
 
 		log.Debug("saving artifacts")
-		for _, source := range sr.Step.Artifacts.Paths {
-			if source == "" {
+		for _, pattern := range sr.Step.Artifacts.Paths {
+			if pattern == "" {
 				continue
 			}
 			id, _ := uuid.NewUUID()
@@ -192,11 +192,43 @@ func NewContainerSaveArtifactsTask(c *container.Container, sr *StepResult) Task 
 			if err := os.MkdirAll(target, 0755); err != nil {
 				return fmt.Errorf("failed to create target directory: %w", err)
 			}
-			err := c.CopyToHost(ctx, source, target)
+
+			tarName := "artifact.tar"
+			err := c.Exec(ctx, c.Inputs.WorkDir, []string{"sh", "-cex", fmt.Sprintf("tar cvf %s %s", tarName, pattern)}, func(reader io.Reader) error {
+				output := new(strings.Builder)
+				_, err := io.Copy(output, reader)
+				if err != nil {
+					return err
+				}
+				log.Debug(output.String())
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("failed to create tarball for pattern: %s", pattern)
+			}
+
+			err = c.CopyToHost(ctx, tarName, target)
 			if err != nil {
 				return err
 			}
-			result.Artifacts[id.String()] = source
+
+			artifactFile := path.Join(target, tarName)
+			err = common.Untar(artifactFile, target)
+			if err != nil {
+				return fmt.Errorf("failed to untar artifact: %w", err)
+			}
+
+			err = os.Remove(artifactFile)
+			if err != nil {
+				return err
+			}
+
+			err = c.Exec(ctx, c.Inputs.WorkDir, []string{"sh", "-ce", fmt.Sprintf("rm %s", tarName)}, nil)
+			if err != nil {
+				return err
+			}
+
+			result.Artifacts[id.String()] = pattern
 		}
 		return nil
 	}

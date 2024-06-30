@@ -5,4 +5,5 @@ type Input struct {
 	Image   string
 	WorkDir string
 	HostDir string
+	Envs    map[string]string
 }

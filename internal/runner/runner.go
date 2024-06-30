@@ -19,13 +19,14 @@ import (
 type Runner struct {
 	Plan   *models.Plan
 	Config *Config
+	Info   *info
 }
 
 func New(project string) *Runner {
 	c := NewConfig()
 	fullPath, _ := filepath.Abs(project)
 	c.HostProjectPath = fullPath
-	return &Runner{Config: c}
+	return &Runner{Config: c, Info: newInfo()}
 }
 
 func (r *Runner) LoadPlan() error {
@@ -134,6 +135,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 			Image:   image,
 			HostDir: r.Config.HostProjectPath,
 			WorkDir: r.Config.WorkDir,
+			Envs:    r.getEnvs(),
 		},
 	)
 
@@ -175,6 +177,37 @@ func (r *Runner) getParallelSize() int {
 		ncpu = 1
 	}
 	return ncpu
+}
+
+func (r *Runner) getEnvs() map[string]string {
+	branch, _ := common.GetGitBranch(r.Config.HostProjectPath)
+	commit, _ := common.GetGitCommit(r.Config.HostProjectPath)
+	owner, _ := common.GetGitOwner(r.Config.HostProjectPath)
+	return map[string]string{
+		"BITBUCKET_BUILD_NUMBER":        "",
+		"BITBUCKET_BRANCH":              branch,
+		"BITBUCKET_CLONE_DIR":           r.Config.WorkDir,
+		"BITBUCKET_COMMIT":              commit,
+		"BITBUCKET_GIT_HTTP_ORIGIN":     "",
+		"BITBUCKET_GIT_SSH_ORIGIN":      "",
+		"BITBUCKET_PIPELINE_UUID":       os.Getenv("BITBUCKET_PIPELINE_UUID"),
+		"BITBUCKET_PROJECT_KEY":         r.Info.Name,
+		"BITBUCKET_PROJECT_UUID":        os.Getenv("BITBUCKET_PROJECT_UUID"),
+		"BITBUCKET_REPO_FULL_NAME":      path.Base(r.Config.HostProjectPath),
+		"BITBUCKET_REPO_IS_PRIVATE":     "true",
+		"BITBUCKET_REPO_OWNER":          owner,
+		"BITBUCKET_REPO_OWNER_UUID":     os.Getenv("BITBUCKET_REPO_OWNER_UUID"),
+		"BITBUCKET_REPO_SLUG":           os.Getenv("BITBUCKET_REPO_SLUG"),
+		"BITBUCKET_REPO_UUID":           os.Getenv("BITBUCKET_REPO_UUID"),
+		"BITBUCKET_SSH_KEY_FILE":        "",
+		"BITBUCKET_STEP_RUN_NUMBER":     os.Getenv("BITBUCKET_STEP_RUN_NUMBER"),
+		"BITBUCKET_STEP_TRIGGERER_UUID": os.Getenv("BITBUCKET_STEP_TRIGGERER_UUID"),
+		"BITBUCKET_STEP_UUID":           os.Getenv("BITBUCKET_STEP_UUID"),
+		"BITBUCKET_WORKSPACE":           r.Info.Name,
+		"CI":                            os.Getenv("CI"),
+		"DOCKER_HOST":                   os.Getenv("DOCKER_HOST"),
+		"PIPELINES_JWT_TOKEN":           os.Getenv("PIPELINES"),
+	}
 }
 
 func getColoredStatus(status string) string {
