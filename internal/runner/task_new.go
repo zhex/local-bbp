@@ -194,7 +194,7 @@ func NewContainerSaveArtifactsTask(c *container.Container, sr *StepResult) Task 
 			}
 
 			tarName := "artifact.tar"
-			err := c.Exec(ctx, c.Inputs.WorkDir, []string{"sh", "-cex", fmt.Sprintf("tar cvf %s %s", tarName, pattern)}, func(reader io.Reader) error {
+			err := c.Exec(ctx, c.Inputs.WorkDir, []string{"sh", "-ce", fmt.Sprintf("tar cvf %s %s", tarName, pattern)}, func(reader io.Reader) error {
 				output := new(strings.Builder)
 				_, err := io.Copy(output, reader)
 				if err != nil {
