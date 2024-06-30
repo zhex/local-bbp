@@ -42,27 +42,34 @@ func (r *Runner) LoadPlan() error {
 }
 
 func (r *Runner) Run(name string) {
+	ctx := context.Background()
+
 	if r.Plan == nil {
 		if err := r.LoadPlan(); err != nil {
 			log.Fatalf("Error loading plan: %s", err)
 		}
 	}
-	actions := r.getPipeline(name)
-	if actions == nil {
-		log.Fatalf("No pipeline [%s] found", name)
-	}
-
-	ctx := context.Background()
 
 	result := NewResult(name, r)
 	ctx = WithResult(ctx, result)
 
+	logger := NewLogger().WithFields(log.Fields{
+		"Pipeline": name,
+		"ID":       result.ID,
+	})
+	ctx = WithLogger(ctx, logger)
+
+	actions := r.getPipeline(name)
+	if actions == nil {
+		logger.Fatalf("No pipeline [%s] found", name)
+	}
+
 	if err := os.MkdirAll(fmt.Sprintf("%s/logs", result.GetOutputPath()), 0755); err != nil {
-		log.Fatalf("Error creating output directory: %s", err)
+		logger.Fatalf("Error creating output directory: %s", err)
 	}
 
 	if err := os.MkdirAll(fmt.Sprintf("%s/artifacts", result.GetOutputPath()), 0755); err != nil {
-		log.Fatalf("Error creating artifacts directory: %s", err)
+		logger.Fatalf("Error creating artifacts directory: %s", err)
 	}
 
 	var chain Task
@@ -102,13 +109,14 @@ func (r *Runner) Run(name string) {
 			if result.Status == "pending" {
 				result.Status = "success"
 			}
-			log.Println("---------------------------------------------")
-			log.Println("Pipeline result: ", getColoredStatus(result.Status))
-			log.Println("Total Elapsed Time:", result.GetDuration().Round(time.Millisecond).String())
+			fmt.Print("\n\n")
+			logger.Println("Pipeline result: ", getColoredStatus(result.Status))
+			logger.Println("Total Elapsed Time:", result.GetDuration().Round(time.Millisecond).String())
+			logger.Println("Output Path:", result.GetOutputPath())
 			return nil
 		})
 		if err := chain(ctx); err != nil {
-			log.Fatalf("Error running task: %s", err)
+			logger.Fatalf("Error running task: %s", err)
 		}
 	}
 }
@@ -141,7 +149,9 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 
 	t := NewTaskChain(
 		func(ctx context.Context) error {
-			log.Info("Start ", sr.Name)
+			ctx = WithLoggerComposeStepResult(ctx, sr)
+			logger := GetLogger(ctx)
+			logger.Info("Start ", sr.Name)
 			result := GetResult(ctx)
 			stepResult, _ := result.StepResults[sr.Index]
 			stepResult.StartTime = time.Now()
@@ -161,14 +171,19 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 		t = t.Finally(NewContainerExecTask(c, sr, sr.Step.AfterScript))
 	}
 
-	return t.Finally(NewContainerRemoveTask(c).Then(func(ctx context.Context) error {
+	t = t.Finally(NewContainerRemoveTask(c).Then(func(ctx context.Context) error {
+		logger := GetLogger(ctx)
 		result := GetResult(ctx)
 		stepResult, _ := result.StepResults[sr.Index]
 		stepResult.EndTime = time.Now()
 		d := stepResult.EndTime.Sub(stepResult.StartTime)
-		log.Infof("End %s [%s] %s", sr.Name, getColoredStatus(stepResult.Status), common.ColorGrey(d.Round(time.Millisecond).String()))
+		logger.Infof("End %s [%s] %s", sr.Name, getColoredStatus(stepResult.Status), common.ColorGrey(d.Round(time.Millisecond).String()))
 		return nil
 	}))
+
+	return func(ctx context.Context) error {
+		return t(WithLoggerComposeStepResult(ctx, sr))
+	}
 }
 
 func (r *Runner) getParallelSize() int {

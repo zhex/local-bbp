@@ -10,7 +10,7 @@ import (
 var version string
 
 func main() {
-	log.SetLevel(log.DebugLevel)
+	//log.SetLevel(log.DebugLevel)
 	c := cmd.CreateRootCmd(version)
 	if err := c.Execute(); err != nil {
 		log.Fatal(err)

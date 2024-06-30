@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github/zhex/bbp/internal/common"
 	"github/zhex/bbp/internal/models"
+	"path"
 	"strings"
 	"time"
 )
@@ -56,7 +57,7 @@ func (r *Result) GetDuration() time.Duration {
 }
 
 func (r *Result) GetOutputPath() string {
-	return fmt.Sprintf("%s/%s", r.Runner.Config.OutputDir, r.ID)
+	return path.Join(r.Runner.Config.OutputDir, r.ID)
 }
 
 type StepResult struct {

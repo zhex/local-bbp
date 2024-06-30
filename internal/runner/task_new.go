@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 	"github/zhex/bbp/internal/common"
 	"github/zhex/bbp/internal/container"
 	"io"
@@ -70,6 +69,7 @@ func NewParallelTask(size int, tasks ...Task) Task {
 
 func NewImagePullTask(c *container.Container) Task {
 	return func(ctx context.Context) error {
+		log := GetLogger(ctx)
 		exists, err := c.IsImageExists(ctx)
 		if err != nil {
 			return err
@@ -84,6 +84,7 @@ func NewImagePullTask(c *container.Container) Task {
 
 func NewContainerCreateTask(c *container.Container) Task {
 	return func(ctx context.Context) error {
+		log := GetLogger(ctx)
 		log.Debug("creating container")
 		return c.Create(ctx)
 	}
@@ -97,6 +98,7 @@ func NewContainerStartTask(c *container.Container) Task {
 
 func NewContainerCloneTask(c *container.Container) Task {
 	return func(ctx context.Context) error {
+		log := GetLogger(ctx)
 		log.Debug("prepare workdir ", c.Inputs.WorkDir)
 		cmd := []string{"sh", "-ce", fmt.Sprintf("mkdir -p %s && sync", c.Inputs.WorkDir)}
 		if err := c.Exec(ctx, "", cmd, nil); err != nil {
@@ -118,6 +120,7 @@ func NewContainerCloneTask(c *container.Container) Task {
 
 func NewContainerExecTask(c *container.Container, sr *StepResult, cmd []string) Task {
 	return func(ctx context.Context) error {
+		log := GetLogger(ctx)
 		result := GetResult(ctx)
 
 		if len(cmd) == 0 {
@@ -154,6 +157,7 @@ func NewContainerExecTask(c *container.Container, sr *StepResult, cmd []string) 
 
 func NewContainerDownloadArtifactsTask(c *container.Container, sr *StepResult) Task {
 	return func(ctx context.Context) error {
+		log := GetLogger(ctx)
 		result := GetResult(ctx)
 
 		if len(result.Artifacts) == 0 || (sr.Step.Artifacts != nil && !sr.Step.Artifacts.Download) {
@@ -176,6 +180,7 @@ func NewContainerDownloadArtifactsTask(c *container.Container, sr *StepResult) T
 
 func NewContainerSaveArtifactsTask(c *container.Container, sr *StepResult) Task {
 	return func(ctx context.Context) error {
+		log := GetLogger(ctx)
 		result := GetResult(ctx)
 
 		if sr.Step.Artifacts == nil || len(sr.Step.Artifacts.Paths) == 0 {
@@ -194,15 +199,7 @@ func NewContainerSaveArtifactsTask(c *container.Container, sr *StepResult) Task 
 			}
 
 			tarName := "artifact.tar"
-			err := c.Exec(ctx, c.Inputs.WorkDir, []string{"sh", "-ce", fmt.Sprintf("tar cvf %s %s", tarName, pattern)}, func(reader io.Reader) error {
-				output := new(strings.Builder)
-				_, err := io.Copy(output, reader)
-				if err != nil {
-					return err
-				}
-				log.Debug(output.String())
-				return nil
-			})
+			err := c.Exec(ctx, c.Inputs.WorkDir, []string{"sh", "-ce", fmt.Sprintf("tar cvf %s %s", tarName, pattern)}, nil)
 			if err != nil {
 				return fmt.Errorf("failed to create tarball for pattern: %s", pattern)
 			}
@@ -236,6 +233,7 @@ func NewContainerSaveArtifactsTask(c *container.Container, sr *StepResult) Task 
 
 func NewContainerRemoveTask(c *container.Container) Task {
 	return func(ctx context.Context) error {
+		log := GetLogger(ctx)
 		log.Debug("removing container")
 		return c.Remove(ctx)
 	}
