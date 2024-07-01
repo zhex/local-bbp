@@ -19,7 +19,7 @@ func CreateRootCmd(version string) *cobra.Command {
 		},
 	}
 
-	rootCmd.Flags().StringP("name", "n", "default", "Name of the workflow to run")
+	rootCmd.Flags().StringP("name", "n", "default", "ProjectName of the workflow to run")
 	rootCmd.Flags().StringP("project", "p", ".", "Path to the project directory")
 	return rootCmd
 }

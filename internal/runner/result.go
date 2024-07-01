@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"github/zhex/bbp/internal/common"
 	"github/zhex/bbp/internal/models"
 	"path"
@@ -32,6 +33,7 @@ func NewResult(name string, r *Runner) *Result {
 
 func (r *Result) AddStep(idx float32, name string, step *models.Step) *StepResult {
 	sr := &StepResult{
+		ID:      uuid.New(),
 		Index:   idx,
 		Name:    name,
 		Step:    step,
@@ -61,6 +63,7 @@ func (r *Result) GetOutputPath() string {
 }
 
 type StepResult struct {
+	ID        uuid.UUID
 	Index     float32
 	Name      string
 	Step      *models.Step

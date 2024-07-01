@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github/zhex/bbp/internal/common"
 	"github/zhex/bbp/internal/container"
@@ -26,7 +27,7 @@ func New(project string) *Runner {
 	c := NewConfig()
 	fullPath, _ := filepath.Abs(project)
 	c.HostProjectPath = fullPath
-	return &Runner{Config: c, Info: newInfo()}
+	return &Runner{Config: c, Info: newInfo(fullPath)}
 }
 
 func (r *Runner) LoadPlan() error {
@@ -144,7 +145,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 			Image:   image,
 			HostDir: r.Config.HostProjectPath,
 			WorkDir: r.Config.WorkDir,
-			Envs:    r.getEnvs(),
+			Envs:    r.getEnvs(sr),
 		},
 	)
 
@@ -195,34 +196,31 @@ func (r *Runner) getParallelSize() int {
 	return ncpu
 }
 
-func (r *Runner) getEnvs() map[string]string {
-	branch, _ := common.GetGitBranch(r.Config.HostProjectPath)
-	commit, _ := common.GetGitCommit(r.Config.HostProjectPath)
-	owner, _ := common.GetGitOwner(r.Config.HostProjectPath)
+func (r *Runner) getEnvs(sr *StepResult) map[string]string {
 	return map[string]string{
-		"BITBUCKET_BUILD_NUMBER":        "",
-		"BITBUCKET_BRANCH":              branch,
+		"BITBUCKET_BUILD_NUMBER":        sr.Result.ID,
+		"BITBUCKET_BRANCH":              r.Info.BranchName,
 		"BITBUCKET_CLONE_DIR":           r.Config.WorkDir,
-		"BITBUCKET_COMMIT":              commit,
-		"BITBUCKET_GIT_HTTP_ORIGIN":     "",
-		"BITBUCKET_GIT_SSH_ORIGIN":      "",
-		"BITBUCKET_PIPELINE_UUID":       os.Getenv("BITBUCKET_PIPELINE_UUID"),
-		"BITBUCKET_PROJECT_KEY":         r.Info.Name,
-		"BITBUCKET_PROJECT_UUID":        os.Getenv("BITBUCKET_PROJECT_UUID"),
+		"BITBUCKET_COMMIT":              r.Info.CommitID,
+		"BITBUCKET_GIT_HTTP_ORIGIN":     "BITBUCKET_GIT_HTTP_ORIGIN",
+		"BITBUCKET_GIT_SSH_ORIGIN":      "BITBUCKET_GIT_SSH_ORIGIN",
+		"BITBUCKET_PIPELINE_UUID":       uuid.New().String(),
+		"BITBUCKET_PROJECT_KEY":         r.Info.ProjectName,
+		"BITBUCKET_PROJECT_UUID":        r.Info.ProjectID,
 		"BITBUCKET_REPO_FULL_NAME":      path.Base(r.Config.HostProjectPath),
 		"BITBUCKET_REPO_IS_PRIVATE":     "true",
-		"BITBUCKET_REPO_OWNER":          owner,
-		"BITBUCKET_REPO_OWNER_UUID":     os.Getenv("BITBUCKET_REPO_OWNER_UUID"),
-		"BITBUCKET_REPO_SLUG":           os.Getenv("BITBUCKET_REPO_SLUG"),
-		"BITBUCKET_REPO_UUID":           os.Getenv("BITBUCKET_REPO_UUID"),
-		"BITBUCKET_SSH_KEY_FILE":        "",
-		"BITBUCKET_STEP_RUN_NUMBER":     os.Getenv("BITBUCKET_STEP_RUN_NUMBER"),
-		"BITBUCKET_STEP_TRIGGERER_UUID": os.Getenv("BITBUCKET_STEP_TRIGGERER_UUID"),
-		"BITBUCKET_STEP_UUID":           os.Getenv("BITBUCKET_STEP_UUID"),
-		"BITBUCKET_WORKSPACE":           r.Info.Name,
-		"CI":                            os.Getenv("CI"),
-		"DOCKER_HOST":                   os.Getenv("DOCKER_HOST"),
-		"PIPELINES_JWT_TOKEN":           os.Getenv("PIPELINES"),
+		"BITBUCKET_REPO_OWNER":          r.Info.Owner,
+		"BITBUCKET_REPO_OWNER_UUID":     r.Info.OwnerID,
+		"BITBUCKET_REPO_SLUG":           r.Info.RepoID,
+		"BITBUCKET_REPO_UUID":           r.Info.RepoID,
+		"BITBUCKET_SSH_KEY_FILE":        "/opt/atlassian/pipelines/agent/ssh/id_rsa",
+		"BITBUCKET_STEP_RUN_NUMBER":     sr.GetIdxString(),
+		"BITBUCKET_STEP_TRIGGERER_UUID": r.Info.OwnerID,
+		"BITBUCKET_STEP_UUID":           sr.ID.String(),
+		"BITBUCKET_WORKSPACE":           r.Info.ProjectName,
+		"CI":                            "true",
+		"DOCKER_HOST":                   "DOCKER_HOST",
+		"PIPELINES_JWT_TOKEN":           "PIPELINES_JWT_TOKEN",
 	}
 }
 
