@@ -19,17 +19,17 @@ artifacts:
 	var o obj
 	_ = yaml.Unmarshal([]byte(data), &o)
 	assert.Equal(t, 2, len(o.Artifacts.Paths))
-	assert.Equal(t, false, o.Artifacts.Download)
+	assert.Equal(t, true, o.Artifacts.Download)
 
 	data2 := `
 artifacts:
   paths:
     - file1.txt
     - file2.txt
-  download: true
+  download: false
 `
 	var o2 obj
 	_ = yaml.Unmarshal([]byte(data2), &o2)
 	assert.Equal(t, 2, len(o2.Artifacts.Paths))
-	assert.Equal(t, true, o2.Artifacts.Download)
+	assert.Equal(t, false, o2.Artifacts.Download)
 }
