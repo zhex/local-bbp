@@ -8,7 +8,7 @@ const StepTriggerManual StepTrigger = "manual"
 type Step struct {
 	Name        string            `yaml:"name"`
 	Image       string            `yaml:"image"`
-	Script      []string          `yaml:"script"`
+	Script      StepScript        `yaml:"script"`
 	AfterScript []string          `yaml:"after-script"`
 	Environment map[string]string `yaml:"environment"`
 	MaxTime     int               `yaml:"max-time"`
@@ -31,14 +31,4 @@ func (s *Step) GetName() string {
 		return "default"
 	}
 	return s.Name
-}
-
-func NewStep() *Step {
-	return &Step{
-		Environment: make(map[string]string),
-		Caches:      make([]string, 0),
-		Services:    make([]string, 0),
-		MaxTime:     60,
-		Trigger:     StepTriggerAutomatic,
-	}
 }

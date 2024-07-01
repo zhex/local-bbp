@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github/zhex/bbp/internal/common"
 	"github/zhex/bbp/internal/container"
+	"github/zhex/bbp/internal/models"
 	"io"
 	"os"
 	"path"
@@ -118,18 +119,31 @@ func NewContainerCloneTask(c *container.Container) Task {
 	}
 }
 
-func NewContainerExecTask(c *container.Container, sr *StepResult, cmd []string) Task {
+func NewContainerScriptTask(c *container.Container, sr *StepResult, scripts models.StepScript) Task {
 	return func(ctx context.Context) error {
 		log := GetLogger(ctx)
 		result := GetResult(ctx)
 
-		if len(cmd) == 0 {
+		if len(scripts) == 0 {
 			log.Warn("No script to run")
 			sr.Outputs["script"] = "No script to run"
 			sr.Status = "success"
 			return nil
 		}
 		log.Debug("executing script")
+
+		var cmd []string
+		for _, script := range scripts {
+			// TODO - tmp solution, skip the pipe object for now
+			if script.Type() == models.ScriptTypeCmd {
+				s := script.(*models.CmdScript)
+				cmd = append(cmd, s.Cmd)
+			} else if script.Type() == models.ScriptTypePipe {
+				// todo - implement pipe
+			} else {
+				return fmt.Errorf("unknown script step type: %v", script)
+			}
+		}
 
 		cmd = []string{"sh", "-ce", strings.Join(cmd, "\n")}
 		err := c.Exec(ctx, c.Inputs.WorkDir, cmd, func(reader io.Reader) error {
@@ -150,6 +164,39 @@ func NewContainerExecTask(c *container.Container, sr *StepResult, cmd []string) 
 			sr.Status = "failed"
 		} else {
 			sr.Status = "success"
+		}
+		return err
+	}
+}
+
+func NewContainerAfterScriptTask(c *container.Container, sr *StepResult, cmd []string) Task {
+	return func(ctx context.Context) error {
+		log := GetLogger(ctx)
+		result := GetResult(ctx)
+
+		if len(cmd) == 0 {
+			sr.Outputs["after-script"] = "No script to run"
+			return nil
+		}
+		log.Debug("executing after-script")
+
+		cmd = []string{"sh", "-ce", strings.Join(cmd, "\n")}
+		err := c.Exec(ctx, c.Inputs.WorkDir, cmd, func(reader io.Reader) error {
+			logPath := fmt.Sprintf("%s/logs/%s-%s-after-script.log", result.GetOutputPath(), sr.GetIdxString(), sr.Name)
+			file, err := os.Create(logPath)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+
+			if _, err := io.Copy(file, reader); err != nil {
+				return err
+			}
+			return nil
+		})
+
+		if err != nil {
+			sr.Status = "failed"
 		}
 		return err
 	}

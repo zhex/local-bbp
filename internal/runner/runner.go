@@ -164,13 +164,13 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 		NewContainerStartTask(c),
 		NewContainerCloneTask(c),
 		NewContainerDownloadArtifactsTask(c, sr),
-		NewContainerExecTask(c, sr, sr.Step.Script),
+		NewContainerScriptTask(c, sr, sr.Step.Script),
 		NewContainerSaveArtifactsTask(c, sr),
 	)
 
 	if len(sr.Step.AfterScript) > 0 {
 		// fixme - after script log will overwrite the script log
-		t = t.Finally(NewContainerExecTask(c, sr, sr.Step.AfterScript))
+		t = t.Finally(NewContainerAfterScriptTask(c, sr, sr.Step.AfterScript))
 	}
 
 	t = t.Finally(NewContainerRemoveTask(c).Then(func(ctx context.Context) error {
