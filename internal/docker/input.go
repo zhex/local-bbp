@@ -1,4 +1,4 @@
-package container
+package docker
 
 type Input struct {
 	Name    string

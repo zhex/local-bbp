@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github/zhex/bbp/internal/common"
-	"github/zhex/bbp/internal/container"
+	"github/zhex/bbp/internal/docker"
 	"github/zhex/bbp/internal/models"
 	"io"
 	"os"
@@ -68,7 +68,7 @@ func NewParallelTask(size int, tasks ...Task) Task {
 	}
 }
 
-func NewImagePullTask(c *container.Container) Task {
+func NewImagePullTask(c *docker.Container) Task {
 	return func(ctx context.Context) error {
 		log := GetLogger(ctx)
 		exists, err := c.IsImageExists(ctx)
@@ -83,21 +83,30 @@ func NewImagePullTask(c *container.Container) Task {
 	}
 }
 
-func NewContainerCreateTask(c *container.Container) Task {
+func NewContainerCreateTask(c *docker.Container) Task {
 	return func(ctx context.Context) error {
 		log := GetLogger(ctx)
-		log.Debug("creating container")
-		return c.Create(ctx)
+
+		netName := fmt.Sprintf("net_%s", c.Inputs.Name)
+		log.Debugf("creating network %s", netName)
+
+		net := docker.NewNetwork(netName)
+		if err := net.Create(ctx); err != nil {
+			return err
+		}
+
+		log.Debugf("creating container %s", c.Inputs.Name)
+		return c.Create(ctx, net, nil)
 	}
 }
 
-func NewContainerStartTask(c *container.Container) Task {
+func NewContainerStartTask(c *docker.Container) Task {
 	return func(ctx context.Context) error {
 		return c.Start(ctx)
 	}
 }
 
-func NewContainerCloneTask(c *container.Container) Task {
+func NewContainerCloneTask(c *docker.Container) Task {
 	return func(ctx context.Context) error {
 		log := GetLogger(ctx)
 		log.Debugf("prepare workdir %s", c.Inputs.WorkDir)
@@ -119,7 +128,7 @@ func NewContainerCloneTask(c *container.Container) Task {
 	}
 }
 
-func NewContainerScriptTask(c *container.Container, sr *StepResult, scripts models.StepScript) Task {
+func NewContainerScriptTask(c *docker.Container, sr *StepResult, scripts models.StepScript) Task {
 	return func(ctx context.Context) error {
 		log := GetLogger(ctx)
 		result := GetResult(ctx)
@@ -169,7 +178,7 @@ func NewContainerScriptTask(c *container.Container, sr *StepResult, scripts mode
 	}
 }
 
-func NewContainerAfterScriptTask(c *container.Container, sr *StepResult, cmd []string) Task {
+func NewContainerAfterScriptTask(c *docker.Container, sr *StepResult, cmd []string) Task {
 	return func(ctx context.Context) error {
 		log := GetLogger(ctx)
 		result := GetResult(ctx)
@@ -202,7 +211,7 @@ func NewContainerAfterScriptTask(c *container.Container, sr *StepResult, cmd []s
 	}
 }
 
-func NewContainerDownloadArtifactsTask(c *container.Container, sr *StepResult) Task {
+func NewContainerDownloadArtifactsTask(c *docker.Container, sr *StepResult) Task {
 	return func(ctx context.Context) error {
 		log := GetLogger(ctx)
 		result := GetResult(ctx)
@@ -225,7 +234,7 @@ func NewContainerDownloadArtifactsTask(c *container.Container, sr *StepResult) T
 
 }
 
-func NewContainerSaveArtifactsTask(c *container.Container, sr *StepResult) Task {
+func NewContainerSaveArtifactsTask(c *docker.Container, sr *StepResult) Task {
 	return func(ctx context.Context) error {
 		log := GetLogger(ctx)
 		result := GetResult(ctx)
@@ -278,10 +287,15 @@ func NewContainerSaveArtifactsTask(c *container.Container, sr *StepResult) Task 
 	}
 }
 
-func NewContainerRemoveTask(c *container.Container) Task {
+func NewContainerDestroyTask(c *docker.Container) Task {
 	return func(ctx context.Context) error {
 		log := GetLogger(ctx)
-		log.Debug("removing container")
-		return c.Remove(ctx)
+		log.Debugf("destroying container %s", c.Inputs.Name)
+		net := c.Network
+		if err := c.Destroy(ctx); err != nil {
+			return nil
+		}
+		log.Debugf("destroying network %s", net.Name)
+		return net.Destroy(ctx)
 	}
 }

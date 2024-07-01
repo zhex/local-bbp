@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github/zhex/bbp/internal/common"
-	"github/zhex/bbp/internal/container"
+	"github/zhex/bbp/internal/docker"
 	"github/zhex/bbp/internal/models"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -139,9 +139,9 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 		image = sr.Step.Image
 	}
 
-	c := container.NewContainer(
-		&container.Input{
-			Name:    fmt.Sprintf("bbp-%s-%f", sr.Result.ID, sr.Index),
+	c := docker.NewContainer(
+		&docker.Input{
+			Name:    fmt.Sprintf("bbp-%s-%s", sr.Result.ID, sr.GetIdxString()),
 			Image:   image,
 			HostDir: r.Config.HostProjectPath,
 			WorkDir: r.Config.WorkDir,
@@ -173,7 +173,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 		t = t.Finally(NewContainerAfterScriptTask(c, sr, sr.Step.AfterScript))
 	}
 
-	t = t.Finally(NewContainerRemoveTask(c).Then(func(ctx context.Context) error {
+	t = t.Finally(NewContainerDestroyTask(c).Then(func(ctx context.Context) error {
 		logger := GetLogger(ctx)
 		result := GetResult(ctx)
 		stepResult, _ := result.StepResults[sr.Index]

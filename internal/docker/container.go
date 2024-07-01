@@ -1,4 +1,4 @@
-package container
+package docker
 
 import (
 	"context"
@@ -18,11 +18,14 @@ import (
 )
 
 type Container struct {
-	client *client.Client
-	ID     string
-	UID    int
-	GID    int
-	Inputs *Input
+	client      *client.Client
+	ID          string
+	UID         int
+	GID         int
+	Inputs      *Input
+	Network     *Network
+	Vol         *volume.Volume
+	shareVolume bool
 }
 
 func NewContainer(inputs *Input) *Container {
@@ -53,7 +56,7 @@ func (c *Container) Pull(ctx context.Context) error {
 	return err
 }
 
-func (c *Container) Create(ctx context.Context) error {
+func (c *Container) Create(ctx context.Context, net *Network, vol *volume.Volume) error {
 	var envs []string
 	for k, v := range c.Inputs.Envs {
 		envs = append(envs, fmt.Sprintf("%s=%s", k, v))
@@ -64,17 +67,24 @@ func (c *Container) Create(ctx context.Context) error {
 		Env:   envs,
 	}
 
-	vol, err := c.client.VolumeCreate(ctx, volume.CreateOptions{
-		Name: fmt.Sprintf("vol_%s", c.Inputs.Name),
-	})
-	if err != nil {
-		return err
+	if vol == nil {
+		v, err := c.client.VolumeCreate(ctx, volume.CreateOptions{
+			Name: fmt.Sprintf("vol_%s", c.Inputs.Name),
+		})
+		if err != nil {
+			return err
+		}
+		c.Vol = &v
+		c.shareVolume = true
+	} else {
+		c.Vol = vol
+		c.shareVolume = false
 	}
 
 	hostConf := &container.HostConfig{
 		Mounts: []mount.Mount{
 			{
-				Source: vol.Name,
+				Source: c.Vol.Name,
 				Target: c.Inputs.WorkDir,
 				Type:   mount.TypeVolume,
 			},
@@ -88,7 +98,9 @@ func (c *Container) Create(ctx context.Context) error {
 		return err
 	}
 	c.ID = cr.ID
-	return nil
+
+	c.Network = net
+	return c.client.NetworkConnect(ctx, net.ID, c.ID, &network.EndpointSettings{})
 }
 
 func (c *Container) Start(ctx context.Context) error {
@@ -135,18 +147,24 @@ func (c *Container) Exec(ctx context.Context, workdir string, cmd []string, outp
 	}
 }
 
-func (c *Container) Remove(ctx context.Context) error {
+func (c *Container) Destroy(ctx context.Context) error {
 	if c.ID == "" {
 		return nil
 	}
+	c.Network = nil
+
 	err := c.client.ContainerRemove(ctx, c.ID, container.RemoveOptions{
 		Force: true,
 	})
 	if err != nil {
 		return err
 	}
-	volName := fmt.Sprintf("vol_%s", c.Inputs.Name)
-	return c.client.VolumeRemove(ctx, volName, true)
+
+	if !c.shareVolume {
+		return c.client.VolumeRemove(ctx, c.Vol.Name, true)
+	}
+	return nil
+
 }
 
 func (c *Container) CopyToContainer(ctx context.Context, source, target string, excludePatterns []string) error {
