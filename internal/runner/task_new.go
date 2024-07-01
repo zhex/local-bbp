@@ -99,12 +99,12 @@ func NewContainerStartTask(c *container.Container) Task {
 func NewContainerCloneTask(c *container.Container) Task {
 	return func(ctx context.Context) error {
 		log := GetLogger(ctx)
-		log.Debug("prepare workdir ", c.Inputs.WorkDir)
+		log.Debugf("prepare workdir %s", c.Inputs.WorkDir)
 		cmd := []string{"sh", "-ce", fmt.Sprintf("mkdir -p %s && sync", c.Inputs.WorkDir)}
 		if err := c.Exec(ctx, "", cmd, nil); err != nil {
 			return err
 		}
-		log.Debug("cloning container")
+		log.Debugf("cloning project code from %s ", c.Inputs.HostDir)
 		excludePatterns := []string{}
 		ignoreFile := path.Join(c.Inputs.HostDir, ".gitignore")
 		if common.IsFileExists(ignoreFile) {
@@ -163,9 +163,9 @@ func NewContainerDownloadArtifactsTask(c *container.Container, sr *StepResult) T
 		if len(result.Artifacts) == 0 || (sr.Step.Artifacts != nil && !sr.Step.Artifacts.Download) {
 			return nil
 		}
-		log.Debug("downloading artifacts")
 
-		for id, _ := range result.Artifacts {
+		for id, pattern := range result.Artifacts {
+			log.Debugf("downloading artifacts: %s (%s)", pattern, id)
 			source := path.Join(result.GetOutputPath(), "artifacts", id)
 			err := c.CopyToContainer(ctx, source, c.Inputs.WorkDir, []string{})
 			if err != nil {
@@ -187,12 +187,12 @@ func NewContainerSaveArtifactsTask(c *container.Container, sr *StepResult) Task 
 			return nil
 		}
 
-		log.Debug("saving artifacts")
 		for _, pattern := range sr.Step.Artifacts.Paths {
 			if pattern == "" {
 				continue
 			}
 			id, _ := uuid.NewUUID()
+			log.Debugf("saving artifacts: %s (%s)", pattern, id)
 			target := path.Join(result.GetOutputPath(), "artifacts", id.String())
 			if err := os.MkdirAll(target, 0755); err != nil {
 				return fmt.Errorf("failed to create target directory: %w", err)

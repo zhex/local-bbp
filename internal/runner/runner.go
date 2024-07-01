@@ -115,6 +115,7 @@ func (r *Runner) Run(name string) {
 			logger.Println("Output Path:", result.GetOutputPath())
 			return nil
 		})
+		logger.Infof("Start pipeline: %s", result.EventName)
 		if err := chain(ctx); err != nil {
 			logger.Fatalf("Error running task: %s", err)
 		}
@@ -151,7 +152,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 		func(ctx context.Context) error {
 			ctx = WithLoggerComposeStepResult(ctx, sr)
 			logger := GetLogger(ctx)
-			logger.Info("Start ", sr.Name)
+			logger.Infof("Start step: %s", sr.Name)
 			result := GetResult(ctx)
 			stepResult, _ := result.StepResults[sr.Index]
 			stepResult.StartTime = time.Now()
@@ -177,7 +178,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 		stepResult, _ := result.StepResults[sr.Index]
 		stepResult.EndTime = time.Now()
 		d := stepResult.EndTime.Sub(stepResult.StartTime)
-		logger.Infof("End %s [%s] %s", sr.Name, getColoredStatus(stepResult.Status), common.ColorGrey(d.Round(time.Millisecond).String()))
+		logger.Infof("End step: %s [%s] %s", sr.Name, getColoredStatus(stepResult.Status), common.ColorGrey(d.Round(time.Millisecond).String()))
 		return nil
 	}))
 
