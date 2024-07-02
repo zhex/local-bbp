@@ -18,16 +18,21 @@ import (
 )
 
 type Runner struct {
-	Plan   *models.Plan
-	Config *Config
-	Info   *info
+	Plan    *models.Plan
+	Config  *Config
+	Info    *info
+	Secrets map[string]string
 }
 
-func New(project string) *Runner {
+func New(project string, secrets map[string]string) *Runner {
 	c := NewConfig()
 	fullPath, _ := filepath.Abs(project)
 	c.HostProjectPath = fullPath
-	return &Runner{Config: c, Info: newInfo(fullPath)}
+	return &Runner{
+		Config:  c,
+		Info:    newInfo(fullPath),
+		Secrets: secrets,
+	}
 }
 
 func (r *Runner) LoadPlan() error {
@@ -145,7 +150,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 			Image:   image,
 			HostDir: r.Config.HostProjectPath,
 			WorkDir: r.Config.WorkDir,
-			Envs:    r.getEnvs(sr),
+			Envs:    common.MergeMaps(r.getEnvs(sr), r.Secrets),
 		},
 	)
 

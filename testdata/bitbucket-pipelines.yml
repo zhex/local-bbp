@@ -3,9 +3,11 @@ pipelines:
     - step:
         name: build
         script:
-          - echo "Hello, Default"
-          - echo "FOO is $FOO"
+          - echo $AA
+          - echo $BB
           - docker version
+        services:
+          - docker
 #    - step:
 #        name: notify
 #        script:
