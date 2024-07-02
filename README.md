@@ -46,6 +46,19 @@ You can also specify a path to the project directory containing the bitbucket-pi
 bbp -p /path/to/project
 ```
 
+Support secret variables by providing a path to the secrets file:
+
+```bash
+bbp -s /path/to/secrets
+```
+
+Sample secrets file:
+
+```
+MY_SECRET="my-secret-value"
+MY_OTHER_SECRET="my-other-secret-value"
+```
+
 ## License
 
 Local-BBP is released under the MIT License. See [LICENSE](LICENSE) for more details.
