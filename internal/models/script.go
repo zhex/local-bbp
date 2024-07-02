@@ -60,3 +60,12 @@ func (s *StepScript) UnmarshalYAML(value *yaml.Node) error {
 	}
 	return nil
 }
+
+func (s *StepScript) HasPipe() bool {
+	for _, item := range *s {
+		if item.Type() == ScriptTypePipe {
+			return true
+		}
+	}
+	return false
+}

@@ -18,14 +18,13 @@ import (
 )
 
 type Container struct {
-	client      *client.Client
-	ID          string
-	UID         int
-	GID         int
-	Inputs      *Input
-	Network     *Network
-	Vol         *volume.Volume
-	shareVolume bool
+	client  *client.Client
+	ID      string
+	UID     int
+	GID     int
+	Inputs  *Input
+	Network *Network
+	Vol     *volume.Volume
 }
 
 func NewContainer(inputs *Input) *Container {
@@ -56,7 +55,7 @@ func (c *Container) Pull(ctx context.Context) error {
 	return err
 }
 
-func (c *Container) Create(ctx context.Context, net *Network, vol *volume.Volume) error {
+func (c *Container) Create(ctx context.Context, net *Network, requireVol bool, mounts []mount.Mount) error {
 	var envs []string
 	for k, v := range c.Inputs.Envs {
 		envs = append(envs, fmt.Sprintf("%s=%s", k, v))
@@ -67,7 +66,7 @@ func (c *Container) Create(ctx context.Context, net *Network, vol *volume.Volume
 		Env:   envs,
 	}
 
-	if vol == nil {
+	if requireVol {
 		v, err := c.client.VolumeCreate(ctx, volume.CreateOptions{
 			Name: fmt.Sprintf("vol_%s", c.Inputs.Name),
 		})
@@ -75,20 +74,16 @@ func (c *Container) Create(ctx context.Context, net *Network, vol *volume.Volume
 			return err
 		}
 		c.Vol = &v
-		c.shareVolume = false
-	} else {
-		c.Vol = vol
-		c.shareVolume = true
+
+		mounts = append(mounts, mount.Mount{
+			Source: c.Vol.Name,
+			Target: c.Inputs.WorkDir,
+			Type:   mount.TypeVolume,
+		})
 	}
 
 	hostConf := &container.HostConfig{
-		Mounts: []mount.Mount{
-			{
-				Source: c.Vol.Name,
-				Target: c.Inputs.WorkDir,
-				Type:   mount.TypeVolume,
-			},
-		},
+		Mounts: mounts,
 	}
 	plat := &v1.Platform{}
 	networkConf := &network.NetworkingConfig{}
@@ -160,7 +155,7 @@ func (c *Container) Destroy(ctx context.Context) error {
 		return err
 	}
 
-	if !c.shareVolume {
+	if c.Vol != nil {
 		return c.client.VolumeRemove(ctx, c.Vol.Name, true)
 	}
 	return nil

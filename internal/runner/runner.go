@@ -160,17 +160,16 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 			return nil
 		},
 		NewImagePullTask(c),
-		NewContainerCreateTask(c, nil),
+		NewContainerCreateTask(c, sr),
 		NewContainerStartTask(c),
-		NewContainerCloneTask(c),
-		NewContainerDownloadArtifactsTask(c, sr),
-		NewContainerScriptTask(c, sr, sr.Step.Script),
-		NewContainerSaveArtifactsTask(c, sr),
+		NewCloneTask(c),
+		NewDownloadArtifactsTask(c, sr),
+		NewScriptTask(c, sr, sr.Step.Script),
+		NewSaveArtifactsTask(c, sr),
 	)
 
 	if len(sr.Step.AfterScript) > 0 {
-		// fixme - after script log will overwrite the script log
-		t = t.Finally(NewContainerAfterScriptTask(c, sr, sr.Step.AfterScript))
+		t = t.Finally(NewCmdTask(c, sr, sr.Step.AfterScript))
 	}
 
 	t = t.Finally(NewContainerDestroyTask(c).Then(func(ctx context.Context) error {
@@ -219,7 +218,7 @@ func (r *Runner) getEnvs(sr *StepResult) map[string]string {
 		"BITBUCKET_STEP_UUID":           sr.ID.String(),
 		"BITBUCKET_WORKSPACE":           r.Info.ProjectName,
 		"CI":                            "true",
-		"DOCKER_HOST":                   "DOCKER_HOST",
+		"DOCKER_HOST":                   "unix:///var/run/docker.sock",
 		"PIPELINES_JWT_TOKEN":           "PIPELINES_JWT_TOKEN",
 	}
 }

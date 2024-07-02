@@ -1,6 +1,9 @@
 package common
 
-import "os/exec"
+import (
+	"os/exec"
+	"strings"
+)
 
 func GetGitCommit(path string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "HEAD")
@@ -9,7 +12,7 @@ func GetGitCommit(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(out), nil
+	return strings.Trim(string(out), "\r\n"), nil
 }
 
 func GetGitBranch(path string) (string, error) {
@@ -19,7 +22,7 @@ func GetGitBranch(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(out), nil
+	return strings.Trim(string(out), "\r\n"), nil
 }
 
 func GetGitOwner(path string) (string, error) {
@@ -29,5 +32,5 @@ func GetGitOwner(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(out), nil
+	return strings.Trim(string(out), "\r\n"), nil
 }

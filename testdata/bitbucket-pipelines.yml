@@ -1,10 +1,16 @@
 pipelines:
   default:
     - step:
-        name: notify
+        name: build
         script:
-          - echo "hello world"
-          - echo "goodbye world"
+          - echo "Hello, Default"
+          - echo "FOO is $FOO"
+          - docker version
+#    - step:
+#        name: notify
+#        script:
+#          - echo "hello world"
+#          - echo "goodbye world"
 #          - pipe: atlassian/slack-notify:2.3.0
 #            variables:
 #              WEBHOOK_URL: https://hooks.slack.com/services/XXXXXXXXX/XXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX
