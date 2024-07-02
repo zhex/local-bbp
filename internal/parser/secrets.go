@@ -1,6 +1,9 @@
 package parser
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
 
 func ParseSecrets(data []byte) map[string]string {
 	secrets := make(map[string]string)
@@ -15,7 +18,8 @@ func ParseSecrets(data []byte) map[string]string {
 			continue
 		}
 		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
+		trimPattern, _ := regexp.Compile(`^[\s'"]+|[\s'"]+$`)
+		value := trimPattern.ReplaceAllString(parts[1], "")
 		secrets[key] = value
 	}
 
