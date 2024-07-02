@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"github.com/docker/docker/api/types/volume"
 	"github.com/google/uuid"
 	"github/zhex/bbp/internal/common"
 	"github/zhex/bbp/internal/docker"
@@ -78,12 +79,12 @@ func NewImagePullTask(c *docker.Container) Task {
 		if exists {
 			return nil
 		}
-		log.Debug("pulling image")
+		log.Debugf("pulling image %s", c.Inputs.Image)
 		return c.Pull(ctx)
 	}
 }
 
-func NewContainerCreateTask(c *docker.Container) Task {
+func NewContainerCreateTask(c *docker.Container, vol *volume.Volume) Task {
 	return func(ctx context.Context) error {
 		log := GetLogger(ctx)
 
@@ -96,7 +97,7 @@ func NewContainerCreateTask(c *docker.Container) Task {
 		}
 
 		log.Debugf("creating container %s", c.Inputs.Name)
-		return c.Create(ctx, net, nil)
+		return c.Create(ctx, net, vol)
 	}
 }
 
@@ -131,7 +132,6 @@ func NewContainerCloneTask(c *docker.Container) Task {
 func NewContainerScriptTask(c *docker.Container, sr *StepResult, scripts models.StepScript) Task {
 	return func(ctx context.Context) error {
 		log := GetLogger(ctx)
-		result := GetResult(ctx)
 
 		if len(scripts) == 0 {
 			log.Warn("No script to run")
@@ -142,21 +142,62 @@ func NewContainerScriptTask(c *docker.Container, sr *StepResult, scripts models.
 		log.Debug("executing script")
 
 		var cmd []string
-		for _, script := range scripts {
-			// TODO - tmp solution, skip the pipe object for now
+		var scriptTasks []Task
+		for i, script := range scripts {
 			if script.Type() == models.ScriptTypeCmd {
 				s := script.(*models.CmdScript)
 				cmd = append(cmd, s.Cmd)
 			} else if script.Type() == models.ScriptTypePipe {
-				// todo - implement pipe
+				if len(cmd) > 0 {
+					scriptTasks = append(scriptTasks, NewContainerCmdTask(c, sr, cmd))
+					cmd = []string{}
+				}
+				p := script.(*models.Pipe)
+				name := fmt.Sprintf("pipe-%s-%s-%d", sr.Result.ID, sr.GetIdxString(), i)
+				pipeContainer := docker.NewContainer(&docker.Input{
+					Name:    name,
+					Image:   common.GetPipeImage(p.Pipe),
+					WorkDir: c.Inputs.WorkDir,
+					Envs:    common.MergeMaps(c.Inputs.Envs, p.Variables),
+				})
+				pipeTask := NewTaskChain(
+					NewImagePullTask(pipeContainer),
+					NewContainerCreateTask(pipeContainer, c.Vol),
+					NewPipeRunTask(pipeContainer),
+				).Finally(NewContainerDestroyTask(pipeContainer))
+				scriptTasks = append(scriptTasks, pipeTask)
 			} else {
 				return fmt.Errorf("unknown script step type: %v", script)
 			}
 		}
 
+		if len(cmd) > 0 {
+			scriptTasks = append(scriptTasks, NewContainerCmdTask(c, sr, cmd))
+			cmd = []string{}
+		}
+
+		err := NewTaskChain(scriptTasks...)(ctx)
+		if err != nil {
+			sr.Status = "failed"
+		} else {
+			sr.Status = "success"
+		}
+		return err
+	}
+}
+
+func NewContainerCmdTask(c *docker.Container, sr *StepResult, cmd []string) Task {
+	return func(ctx context.Context) error {
+		result := GetResult(ctx)
+
+		if len(cmd) == 0 {
+			sr.Outputs["script"] = "No script to run"
+			return nil
+		}
+
 		cmd = []string{"sh", "-ce", strings.Join(cmd, "\n")}
-		err := c.Exec(ctx, c.Inputs.WorkDir, cmd, func(reader io.Reader) error {
-			logPath := fmt.Sprintf("%s/logs/%s-%s.log", result.GetOutputPath(), sr.GetIdxString(), sr.Name)
+		return c.Exec(ctx, c.Inputs.WorkDir, cmd, func(reader io.Reader) error {
+			logPath := fmt.Sprintf("%s/logs/%s-%s-script.log", result.GetOutputPath(), sr.GetIdxString(), sr.Name)
 			file, err := os.Create(logPath)
 			if err != nil {
 				return err
@@ -168,13 +209,6 @@ func NewContainerScriptTask(c *docker.Container, sr *StepResult, scripts models.
 			}
 			return nil
 		})
-
-		if err != nil {
-			sr.Status = "failed"
-		} else {
-			sr.Status = "success"
-		}
-		return err
 	}
 }
 
@@ -289,6 +323,9 @@ func NewContainerSaveArtifactsTask(c *docker.Container, sr *StepResult) Task {
 
 func NewContainerDestroyTask(c *docker.Container) Task {
 	return func(ctx context.Context) error {
+		if c.ID == "" {
+			return nil
+		}
 		log := GetLogger(ctx)
 		log.Debugf("destroying container %s", c.Inputs.Name)
 		net := c.Network
@@ -297,5 +334,38 @@ func NewContainerDestroyTask(c *docker.Container) Task {
 		}
 		log.Debugf("destroying network %s", net.Name)
 		return net.Destroy(ctx)
+	}
+}
+
+func NewPipeRunTask(c *docker.Container) Task {
+	return func(ctx context.Context) error {
+		log := GetLogger(ctx)
+		result := GetResult(ctx)
+
+		log.Debugf("running pipe %s (%s)", c.Inputs.Name, c.Inputs.Image)
+		if err := c.Start(ctx); err != nil {
+			return err
+		}
+		err := c.Wait(ctx)
+		err2 := c.GetLogs(ctx, func(reader io.Reader) error {
+			logPath := fmt.Sprintf("%s/logs/%s.log", result.GetOutputPath(), c.Inputs.Name)
+			file, err := os.Create(logPath)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+
+			if _, err := io.Copy(file, reader); err != nil {
+				return err
+			}
+			return nil
+		})
+		if err2 != nil {
+			return err2
+		}
+		if err != nil {
+			return fmt.Errorf("pipe %s failed: %w", c.Inputs.Name, err)
+		}
+		return nil
 	}
 }

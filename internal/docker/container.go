@@ -75,10 +75,10 @@ func (c *Container) Create(ctx context.Context, net *Network, vol *volume.Volume
 			return err
 		}
 		c.Vol = &v
-		c.shareVolume = true
+		c.shareVolume = false
 	} else {
 		c.Vol = vol
-		c.shareVolume = false
+		c.shareVolume = true
 	}
 
 	hostConf := &container.HostConfig{
@@ -167,6 +167,22 @@ func (c *Container) Destroy(ctx context.Context) error {
 
 }
 
+func (c *Container) GetLogs(ctx context.Context, handler func(reader io.Reader) error) error {
+	reader, err := c.client.ContainerLogs(ctx, c.ID, container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+	})
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	if handler != nil {
+		return handler(reader)
+	}
+	return nil
+}
+
 func (c *Container) CopyToContainer(ctx context.Context, source, target string, excludePatterns []string) error {
 	tarStream, err := archive.TarWithOptions(source, &archive.TarOptions{
 		ExcludePatterns: excludePatterns,
@@ -190,7 +206,7 @@ func (c *Container) CopyToHost(ctx context.Context, source, target string) error
 	})
 }
 
-func (c *Container) wait(ctx context.Context) error {
+func (c *Container) Wait(ctx context.Context) error {
 	statusCh, errCh := c.client.ContainerWait(ctx, c.ID, container.WaitConditionNotRunning)
 	var statusCode int64
 

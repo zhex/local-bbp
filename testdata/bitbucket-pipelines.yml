@@ -1,18 +1,18 @@
 pipelines:
   default:
     - step:
-        name: build
+        name: notify
         script:
-          - echo "Hello, World!" > builder.txt
-          - echo "Hello, Docker" > docker.txt
-        artifacts:
-          - "bb/*"
-          - "*.txt"
-    - step:
-        name: display
-        script:
-          - cat builder.txt
-          - cat docker.txt
+          - echo "hello world"
+          - echo "goodbye world"
+#          - pipe: atlassian/slack-notify:2.3.0
+#            variables:
+#              WEBHOOK_URL: https://hooks.slack.com/services/XXXXXXXXX/XXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX
+#              MESSAGE: "Hello, Default"
+#              CHANNEL: "#general"
+#              USERNAME: "Bitbucket"
+#              ICON_URL: "https://www.atlassian.com/dam/wac/legacy/bitbucket-174x174.png"
+
 
   custom:
     test:

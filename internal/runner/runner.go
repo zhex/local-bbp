@@ -160,7 +160,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 			return nil
 		},
 		NewImagePullTask(c),
-		NewContainerCreateTask(c),
+		NewContainerCreateTask(c, nil),
 		NewContainerStartTask(c),
 		NewContainerCloneTask(c),
 		NewContainerDownloadArtifactsTask(c, sr),
