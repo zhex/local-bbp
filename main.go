@@ -3,7 +3,7 @@ package main
 import (
 	_ "embed"
 	log "github.com/sirupsen/logrus"
-	"github/zhex/bbp/cmd"
+	"github/zhex/local-bbp/cmd"
 )
 
 //go:embed VERSION

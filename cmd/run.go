@@ -3,8 +3,8 @@ package cmd
 import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github/zhex/bbp/internal/parser"
-	"github/zhex/bbp/internal/runner"
+	"github/zhex/local-bbp/internal/parser"
+	"github/zhex/local-bbp/internal/runner"
 	"os"
 )
 
