@@ -70,11 +70,11 @@ func (r *Runner) Run(name string) {
 		logger.Fatalf("No pipeline [%s] found", name)
 	}
 
-	if err := os.MkdirAll(fmt.Sprintf("%s/logs", result.GetOutputPath()), 0755); err != nil {
+	if err := os.MkdirAll(fmt.Sprintf("%s/logs", result.GetResultPath()), 0755); err != nil {
 		logger.Fatalf("Error creating output directory: %s", err)
 	}
 
-	if err := os.MkdirAll(fmt.Sprintf("%s/artifacts", result.GetOutputPath()), 0755); err != nil {
+	if err := os.MkdirAll(fmt.Sprintf("%s/artifacts", result.GetResultPath()), 0755); err != nil {
 		logger.Fatalf("Error creating artifacts directory: %s", err)
 	}
 
@@ -118,7 +118,7 @@ func (r *Runner) Run(name string) {
 			fmt.Print("\n\n")
 			logger.Println("Pipeline result: ", getColoredStatus(result.Status))
 			logger.Println("Total Elapsed Time:", result.GetDuration().Round(time.Millisecond).String())
-			logger.Println("Output Path:", result.GetOutputPath())
+			logger.Println("Output Path:", result.GetResultPath())
 			return nil
 		})
 		logger.Infof("Start pipeline: %s", result.EventName)
@@ -168,6 +168,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 		NewContainerCreateTask(c, sr),
 		NewContainerStartTask(c),
 		NewCloneTask(c),
+		NewCachesRestoreTask(c, sr),
 		NewDownloadArtifactsTask(c, sr),
 		NewScriptTask(c, sr, sr.Step.Script),
 		NewSaveArtifactsTask(c, sr),

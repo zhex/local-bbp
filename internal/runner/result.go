@@ -58,8 +58,12 @@ func (r *Result) GetDuration() time.Duration {
 	return end.Sub(start)
 }
 
-func (r *Result) GetOutputPath() string {
+func (r *Result) GetResultPath() string {
 	return path.Join(r.Runner.Config.OutputDir, r.ID)
+}
+
+func (r *Result) GetCachePath() string {
+	return path.Join(r.Runner.Config.OutputDir, "caches")
 }
 
 type StepResult struct {

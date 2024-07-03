@@ -160,7 +160,7 @@ func NewCmdTask(c *docker.Container, sr *StepResult, cmd []string) Task {
 
 		cmd = []string{"sh", "-ce", strings.Join(newCmd, "\n")}
 		return c.Exec(ctx, c.Inputs.WorkDir, cmd, func(reader io.Reader) error {
-			logPath := fmt.Sprintf("%s/logs/%s-%s.log", result.GetOutputPath(), sr.GetIdxString(), sr.Name)
+			logPath := fmt.Sprintf("%s/logs/%s-%s.log", result.GetResultPath(), sr.GetIdxString(), sr.Name)
 			file, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 			if err != nil {
 				return err
@@ -186,7 +186,7 @@ func NewDownloadArtifactsTask(c *docker.Container, sr *StepResult) Task {
 
 		for id, pattern := range result.Artifacts {
 			log.Debugf("downloading artifacts: %s (%s)", pattern, id)
-			source := path.Join(result.GetOutputPath(), "artifacts", id)
+			source := path.Join(result.GetResultPath(), "artifacts", id)
 			err := c.CopyToContainer(ctx, source, c.Inputs.WorkDir, []string{})
 			if err != nil {
 				return err
@@ -213,7 +213,7 @@ func NewSaveArtifactsTask(c *docker.Container, sr *StepResult) Task {
 			}
 			id, _ := uuid.NewUUID()
 			log.Debugf("saving artifacts: %s (%s)", pattern, id)
-			target := path.Join(result.GetOutputPath(), "artifacts", id.String())
+			target := path.Join(result.GetResultPath(), "artifacts", id.String())
 			if err := os.MkdirAll(target, 0755); err != nil {
 				return fmt.Errorf("failed to create target directory: %w", err)
 			}
@@ -264,5 +264,33 @@ func NewContainerDestroyTask(c *docker.Container) Task {
 		}
 		log.Debugf("destroying network %s", net.Name)
 		return net.Destroy(ctx)
+	}
+}
+
+func NewCachesRestoreTask(c *docker.Container, sr *StepResult) Task {
+	return func(ctx context.Context) error {
+		if len(sr.Step.Caches) == 0 {
+			return nil
+		}
+		log := GetLogger(ctx)
+		result := GetResult(ctx)
+
+		for _, cacheKey := range sr.Step.Caches {
+			log.Debugf("restoring caches: %s", cacheKey)
+			cache := defaultCaches.Get(cacheKey)
+			if cache == nil {
+				log.Warnf("cache not found: %s", cacheKey)
+				continue
+			}
+			src := path.Join(result.GetCachePath(), cacheKey)
+			if !common.IsFileExists(src) {
+				log.Warnf("cache not found: %s", cacheKey)
+				continue
+			}
+			if err := c.CopyToContainer(ctx, src, cache.Path, []string{}); err != nil {
+				log.Warnf("failed to restore cache: %s", cacheKey)
+			}
+		}
+		return nil
 	}
 }
