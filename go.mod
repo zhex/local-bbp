@@ -7,7 +7,6 @@ require (
 	github.com/fatih/color v1.17.0
 	github.com/google/uuid v1.3.1
 	github.com/opencontainers/image-spec v1.1.0
-	github.com/santhosh-tekuri/jsonschema v1.2.4
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
