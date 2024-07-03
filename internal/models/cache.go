@@ -14,6 +14,15 @@ type Cache struct {
 	Key  *CacheKey `yaml:"key"`
 }
 
+func NewCache(path string, files []string) *Cache {
+	return &Cache{
+		Path: path,
+		Key: &CacheKey{
+			Files: files,
+		},
+	}
+}
+
 func (c *Cache) UnmarshalYAML(value *yaml.Node) error {
 	if value.Kind == yaml.ScalarNode {
 		var path string
@@ -34,9 +43,13 @@ func (c *Cache) UnmarshalYAML(value *yaml.Node) error {
 
 type Caches map[string]*Cache
 
-func (c *Caches) Get(name string) *Cache {
-	if cache, ok := (*c)[name]; ok {
+func (c Caches) Get(name string) *Cache {
+	if cache, ok := c[name]; ok {
 		return cache
 	}
 	return nil
+}
+
+func (c Caches) Set(name string, cache *Cache) {
+	c[name] = cache
 }

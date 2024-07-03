@@ -90,7 +90,7 @@ func (r *Runner) Run(name string) {
 				sr := result.AddStep(idx, subAction.Step.GetName(), subAction.Step)
 				parallelTasks = append(parallelTasks, r.newStepTask(sr))
 			}
-			actionTask = NewParallelTask(r.getParallelSize(), parallelTasks...)
+			actionTask = ParallelTask(r.getParallelSize(), parallelTasks...)
 		} else {
 			idx := float32(i + 1)
 			sr := result.AddStep(idx, action.Step.GetName(), action.Step)
@@ -154,7 +154,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 		},
 	)
 
-	t := NewTaskChain(
+	t := ChainTask(
 		func(ctx context.Context) error {
 			ctx = WithLoggerComposeStepResult(ctx, sr)
 			logger := GetLogger(ctx)
