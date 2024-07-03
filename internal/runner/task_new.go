@@ -170,14 +170,12 @@ func NewScriptTask(c *docker.Container, sr *StepResult, scripts models.StepScrip
 					fmt.Sprintf("-v %s:%s", c.Inputs.WorkDir, c.Inputs.WorkDir),
 					fmt.Sprintf("-v /usr/local/bin/docker:/usr/local/bin/docker:ro"),
 				}
-				envs := common.MergeMaps(c.Inputs.Envs, p.Variables)
 				var envArgs []string
-				for k, v := range envs {
-					val := fmt.Sprintf("$%s", k)
-					if strings.HasPrefix(v, "$") {
-						val = v
-					}
-					envArgs = append(envArgs, fmt.Sprintf("-e %s=\"%s\"", k, val))
+				for k := range c.Inputs.Envs {
+					envArgs = append(envArgs, fmt.Sprintf("-e %s=\"$%s\"", k, k))
+				}
+				for k, v := range p.Variables {
+					envArgs = append(envArgs, fmt.Sprintf("-e %s=\"%s\"", k, v))
 				}
 				dockerCmd := fmt.Sprintf(
 					"docker run --rm -w $(pwd) \\\n  %s \\\n  %s \\\n  %s",
