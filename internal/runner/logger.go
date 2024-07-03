@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"github/zhex/local-bbp/internal/common"
+	"github.com/zhex/local-bbp/internal/common"
 )
 
 var loggerKey = "logger"

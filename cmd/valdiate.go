@@ -3,7 +3,7 @@ package cmd
 import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github/zhex/local-bbp/internal/validator"
+	"github.com/zhex/local-bbp/internal/validator"
 	"os"
 	"path"
 )

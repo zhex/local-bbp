@@ -2,7 +2,7 @@ package runner
 
 import (
 	"github.com/google/uuid"
-	"github/zhex/local-bbp/internal/common"
+	"github.com/zhex/local-bbp/internal/common"
 )
 
 type info struct {

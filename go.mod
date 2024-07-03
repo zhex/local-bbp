@@ -1,4 +1,4 @@
-module github/zhex/local-bbp
+module github.com/zhex/local-bbp
 
 go 1.22.3
 
