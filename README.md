@@ -14,10 +14,10 @@ You can install Local-BBP using Homebrew:
 ```bash
 brew install bbp
 ```
-Alternatively, you can install it using Go:
+Alternatively, you can install it if you have Golang installed:
 
 ```bash
-go install github.com/zhex/local-bbp
+curl -s https://raw.githubusercontent.com/zhex/local-bbp/main/scripts/install.sh | bash
 ```
 
 Ensure your $GOPATH/bin is in your PATH to run Local-BBP directly.
