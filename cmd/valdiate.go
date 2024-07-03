@@ -23,6 +23,7 @@ func newValidateCmd() *cobra.Command {
 			err = validator.ValidatePipelineYaml(data)
 			if err != nil {
 				validator.PrintError(err)
+				os.Exit(1)
 			} else {
 				log.Info("Validation successful")
 			}
