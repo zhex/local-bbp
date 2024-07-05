@@ -14,7 +14,6 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 )
 
@@ -46,7 +45,7 @@ func (r *Runner) LoadPlan() error {
 	if err != nil {
 		return err
 	}
-	r.CacheStore = cache.NewStore(path.Join(r.Config.OutputDir, "cache"), r.Plan.Definitions.Caches)
+	r.CacheStore = cache.NewStore(path.Join(r.Config.OutputDir, "cache"), r.Plan.GetCaches())
 	return nil
 }
 
@@ -68,7 +67,7 @@ func (r *Runner) Run(name string) {
 	})
 	ctx = WithLogger(ctx, logger)
 
-	actions := r.getPipeline(name)
+	actions := r.Plan.GetPipeline(name)
 	if actions == nil {
 		logger.Fatalf("No pipeline [%s] found", name)
 	}
@@ -129,16 +128,6 @@ func (r *Runner) Run(name string) {
 			logger.Fatalf("Error running task: %s", err)
 		}
 	}
-}
-
-func (r *Runner) getPipeline(name string) []*models.Action {
-	if strings.ToLower(name) == "default" || len(name) == 0 {
-		return r.Plan.Pipelines.Default
-	}
-	if _, ok := r.Plan.Pipelines.Custom[name]; ok {
-		return r.Plan.Pipelines.Custom[name]
-	}
-	return nil
 }
 
 func (r *Runner) newStepTask(sr *StepResult) Task {

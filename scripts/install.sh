@@ -21,7 +21,7 @@ echo $RELEASE_URL
 curl -L $RELEASE_URL -o /tmp/$PACKAGE_NAME
 
 # Extract the package
-tar -xzvf /tmp/$PACKAGE_NAME -C $BIN_DIR bbp
+sudo tar -xzvf /tmp/$PACKAGE_NAME -C $BIN_DIR bbp
 
 # Clean up
 rm /tmp/$PACKAGE_NAME
