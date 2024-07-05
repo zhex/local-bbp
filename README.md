@@ -9,18 +9,11 @@ As a developer, I often find that the first 5-10 pipeline runs for a new project
 
 ## Installation
 
-You can install Local-BBP using Homebrew:
-
-```bash
-brew install bbp
-```
-Alternatively, you can install it if you have Golang installed:
+You can install the latest version of Local-BBP using the following command:
 
 ```bash
 curl -s https://raw.githubusercontent.com/zhex/local-bbp/main/scripts/install.sh | bash
 ```
-
-Ensure your $GOPATH/bin is in your PATH to run Local-BBP directly.
 
 ### Usage
 
