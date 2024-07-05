@@ -21,6 +21,8 @@ builds:
       - darwin
     binary: bbp
 
+release:
+  prerelease: "true"
 
 changelog:
   sort: asc
