@@ -7,6 +7,28 @@ Local-BBP is an open-source CLI tool written in Go, designed to simulate Bitbuck
 
 As a developer, I often find that the first 5-10 pipeline runs for a new project fail due to configuration issues. This can be incredibly time-consuming and frustrating, as each failure requires a push to Bitbucket, a wait for the pipeline to run, and then reviewing the results to identify and fix issues. With Local-BBP, I can run and debug these pipelines locally, saving time and reducing the number of failed runs in the actual CI environment.
 
+## Supported Features
+
+- [x] Run pipeline
+  - [x] Run default
+  - [x] Run branches
+  - [x] Run custom
+  - [x] Run pull request
+  - [x] Run tags
+- [x] Parallel steps
+- [x] Secret variables from file
+- [x] Custom Docker image in single step
+- [x] Artifacts
+- [x] Smart caches
+- [x] Pipe image in script
+- [ ] Services
+- [ ] Permissions
+- [ ] Settings
+  - [ ] Default image
+  - [ ] Timeout
+  - [ ] Container Size
+- [x] Validate bitbucket-pipelines.yml file
+
 ## Installation
 
 You can install the latest version of Local-BBP using the following command:
@@ -15,7 +37,7 @@ You can install the latest version of Local-BBP using the following command:
 curl -s https://raw.githubusercontent.com/zhex/local-bbp/main/scripts/install.sh | bash
 ```
 
-### Usage
+### Usages
 
 You need to have Docker installed on your machine to run Local-BBP.
 
@@ -33,7 +55,7 @@ You can also specify a specific pipeline to run using the -n flag:
 bbp run -n my-pipeline
 ```
 
-You can also specify a path to the project directory containing the bitbucket-pipelines.yml file:
+You can also specify a path to the project directory containing the [bitbucket-pipelines.yml](https://support.atlassian.com/bitbucket-cloud/docs/bitbucket-pipelines-configuration-reference/) file:
 
 ```bash
 bbp run -p /path/to/project
@@ -45,18 +67,20 @@ Support secret variables by providing a path to the secrets file:
 bbp run -s /path/to/secrets
 ```
 
-Sample secrets file:
+The secret file format is the same as dot env file. Sample secrets file:
 
 ```
 MY_SECRET="my-secret-value"
 MY_OTHER_SECRET="my-other-secret-value"
 ```
 
-Also you can validate your bitbucket-pipelines.yml file using the following command:
+Also, you can validate your bitbucket-pipelines.yml file using the following command:
 
 ```bash
 bbp validate
 ```
+
+The validation rules are based on the official Bitbucket Pipelines configuration [schema](https://bitbucket.org/atlassianlabs/intellij-bitbucket-references-plugin/raw/master/src/main/resources/schemas/bitbucket-pipelines.schema.json).
 
 ## License
 
