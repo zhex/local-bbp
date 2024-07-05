@@ -22,7 +22,7 @@ You need to have Docker installed on your machine to run Local-BBP.
 To simulate your Bitbucket pipeline locally, navigate to the directory containing your bitbucket-pipelines.yml file and run:
 
 ```bash
-bbp
+bbp run
 ```
 
 This command will execute your default pipeline steps as defined in the bitbucket-pipelines.yml file.
@@ -30,19 +30,19 @@ This command will execute your default pipeline steps as defined in the bitbucke
 You can also specify a specific pipeline to run using the -n flag:
 
 ```bash
-bbp -n my-pipeline
+bbp run -n my-pipeline
 ```
 
 You can also specify a path to the project directory containing the bitbucket-pipelines.yml file:
 
 ```bash
-bbp -p /path/to/project
+bbp run -p /path/to/project
 ```
 
 Support secret variables by providing a path to the secrets file:
 
 ```bash
-bbp -s /path/to/secrets
+bbp run -s /path/to/secrets
 ```
 
 Sample secrets file:
@@ -50,6 +50,12 @@ Sample secrets file:
 ```
 MY_SECRET="my-secret-value"
 MY_OTHER_SECRET="my-other-secret-value"
+```
+
+Also you can validate your bitbucket-pipelines.yml file using the following command:
+
+```bash
+bbp validate
 ```
 
 ## License
