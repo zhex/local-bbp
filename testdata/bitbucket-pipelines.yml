@@ -1,18 +1,12 @@
 pipelines:
   default:
     - step:
-        name: notify
+        name: cache
         script:
-          - echo "hello world"
-          - echo "goodbye world"
-          - pipe: atlassian/slack-notify:2.3.0
-            variables:
-              WEBHOOK_URL: https://hooks.slack.com/services/XXXXXXXXX/XXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX
-              MESSAGE: "Hello, Default"
-              CHANNEL: "#general"
-              USERNAME: "Bitbucket"
-              ICON_URL: $AA
-
+          - echo "Hello, World"
+          - cat node_modules/test.txt
+        caches:
+          - node
 
   custom:
     test:

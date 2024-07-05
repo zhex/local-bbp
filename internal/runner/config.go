@@ -1,5 +1,7 @@
 package runner
 
+import "path/filepath"
+
 type Config struct {
 	HostProjectPath  string
 	WorkDir          string
@@ -10,11 +12,13 @@ type Config struct {
 }
 
 func NewConfig() *Config {
+	output, _ := filepath.Abs("./bbp")
+
 	return &Config{
 		HostProjectPath:  ".",
 		DefaultImage:     "atlassian/default-image:4",
 		WorkDir:          "/opt/atlassian/pipelines/agent/build",
-		OutputDir:        "./bbp",
+		OutputDir:        output,
 		HostDockerDaemon: "/var/run/docker.sock",
 		HostDockerCLI:    "/Users/zhex/Downloads/docker/docker",
 	}

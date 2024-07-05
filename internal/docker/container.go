@@ -190,6 +190,9 @@ func (c *Container) CopyToContainer(ctx context.Context, source, target string, 
 }
 
 func (c *Container) CopyToHost(ctx context.Context, source, target string) error {
+	if err := os.MkdirAll(target, 0755); err != nil {
+		return fmt.Errorf("failed to create target directory: %w", err)
+	}
 	reader, _, err := c.client.CopyFromContainer(ctx, c.ID, path.Join(c.Inputs.WorkDir, source))
 	if err != nil {
 		return err

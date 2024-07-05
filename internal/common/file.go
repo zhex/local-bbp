@@ -11,8 +11,13 @@ import (
 )
 
 func IsFileExists(path string) bool {
-	_, err := os.Stat(path)
-	return !os.IsNotExist(err)
+	f, err := os.Stat(path)
+	return !os.IsNotExist(err) && !f.IsDir()
+}
+
+func IsDirExists(path string) bool {
+	f, err := os.Stat(path)
+	return !os.IsNotExist(err) && f.IsDir()
 }
 
 func Untar(src, dest string) error {

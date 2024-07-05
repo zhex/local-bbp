@@ -1,8 +1,8 @@
-package runner
+package cache
 
 import "github.com/zhex/local-bbp/internal/models"
 
-var defaultCaches = new(models.Caches)
+var defaultCaches = models.Caches{}
 
 func init() {
 	defaultCaches.Set("node", models.NewCache("node_modules", []string{"package-lock.json", "yarn.lock"}))

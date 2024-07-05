@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
@@ -13,6 +14,9 @@ import (
 	"path"
 	"strings"
 )
+
+//go:embed scripts/get-sha265.sh
+var shaCheckScript string
 
 func NewImagePullTask(c *docker.Container) Task {
 	return func(ctx context.Context) error {
@@ -31,18 +35,18 @@ func NewImagePullTask(c *docker.Container) Task {
 
 func NewContainerCreateTask(c *docker.Container, sr *StepResult) Task {
 	return func(ctx context.Context) error {
-		log := GetLogger(ctx)
+		logger := GetLogger(ctx)
 		result := GetResult(ctx)
 
 		netName := fmt.Sprintf("net_%s", c.Inputs.Name)
-		log.Debugf("creating network %s", netName)
+		logger.Debugf("creating network %s", netName)
 
 		net := docker.NewNetwork(netName)
 		if err := net.Create(ctx); err != nil {
 			return err
 		}
 
-		log.Debugf("creating container %s", c.Inputs.Name)
+		logger.Debugf("creating container %s", c.Inputs.Name)
 		var mounts []mount.Mount
 		if sr.Step.Script.HasPipe() || common.Contains(sr.Step.Services, "docker") {
 			mounts = append(
@@ -71,13 +75,13 @@ func NewContainerStartTask(c *docker.Container) Task {
 
 func NewCloneTask(c *docker.Container) Task {
 	return func(ctx context.Context) error {
-		log := GetLogger(ctx)
-		log.Debugf("prepare workdir %s", c.Inputs.WorkDir)
+		logger := GetLogger(ctx)
+		logger.Debugf("prepare workdir %s", c.Inputs.WorkDir)
 		cmd := []string{"sh", "-ce", fmt.Sprintf("mkdir -p %s && sync", c.Inputs.WorkDir)}
 		if err := c.Exec(ctx, "", cmd, nil); err != nil {
 			return err
 		}
-		log.Debugf("cloning project code from %s ", c.Inputs.HostDir)
+		logger.Debugf("cloning project code from %s ", c.Inputs.HostDir)
 		excludePatterns := []string{}
 		ignoreFile := path.Join(c.Inputs.HostDir, ".gitignore")
 		if common.IsFileExists(ignoreFile) {
@@ -93,15 +97,15 @@ func NewCloneTask(c *docker.Container) Task {
 
 func NewScriptTask(c *docker.Container, sr *StepResult, scripts models.StepScript) Task {
 	return func(ctx context.Context) error {
-		log := GetLogger(ctx)
+		logger := GetLogger(ctx)
 
 		if len(scripts) == 0 {
-			log.Warn("No script to run")
+			logger.Warn("No script to run")
 			sr.Outputs["script"] = "No script to run"
 			sr.Status = "success"
 			return nil
 		}
-		log.Debug("executing script")
+		logger.Debug("executing script")
 
 		var cmd []string
 		for _, script := range scripts {
@@ -200,7 +204,7 @@ func NewDownloadArtifactsTask(c *docker.Container, sr *StepResult) Task {
 
 func NewSaveArtifactsTask(c *docker.Container, sr *StepResult) Task {
 	return func(ctx context.Context) error {
-		log := GetLogger(ctx)
+		logger := GetLogger(ctx)
 		result := GetResult(ctx)
 
 		if sr.Step.Artifacts == nil || len(sr.Step.Artifacts.Paths) == 0 {
@@ -212,11 +216,7 @@ func NewSaveArtifactsTask(c *docker.Container, sr *StepResult) Task {
 				continue
 			}
 			id, _ := uuid.NewUUID()
-			log.Debugf("saving artifacts: %s (%s)", pattern, id)
-			target := path.Join(result.GetResultPath(), "artifacts", id.String())
-			if err := os.MkdirAll(target, 0755); err != nil {
-				return fmt.Errorf("failed to create target directory: %w", err)
-			}
+			logger.Debugf("saving artifacts: %s (%s)", pattern, id)
 
 			tarName := "artifact.tar"
 			err := c.Exec(ctx, c.Inputs.WorkDir, []string{"sh", "-ce", fmt.Sprintf("tar cvf %s %s", tarName, pattern)}, nil)
@@ -224,6 +224,7 @@ func NewSaveArtifactsTask(c *docker.Container, sr *StepResult) Task {
 				return fmt.Errorf("failed to create tarball for pattern: %s", pattern)
 			}
 
+			target := path.Join(result.GetResultPath(), "artifacts", id.String())
 			err = c.CopyToHost(ctx, tarName, target)
 			if err != nil {
 				return err
@@ -256,13 +257,13 @@ func NewContainerDestroyTask(c *docker.Container) Task {
 		if c.ID == "" {
 			return nil
 		}
-		log := GetLogger(ctx)
-		log.Debugf("destroying container %s", c.Inputs.Name)
+		logger := GetLogger(ctx)
+		logger.Debugf("destroying container %s", c.Inputs.Name)
 		net := c.Network
 		if err := c.Destroy(ctx); err != nil {
 			return nil
 		}
-		log.Debugf("destroying network %s", net.Name)
+		logger.Debugf("destroying network %s", net.Name)
 		return net.Destroy(ctx)
 	}
 }
@@ -272,25 +273,88 @@ func NewCachesRestoreTask(c *docker.Container, sr *StepResult) Task {
 		if len(sr.Step.Caches) == 0 {
 			return nil
 		}
-		log := GetLogger(ctx)
+		logger := GetLogger(ctx)
 		result := GetResult(ctx)
+		cacheStore := result.Runner.CacheStore
 
 		for _, cacheKey := range sr.Step.Caches {
-			log.Debugf("restoring caches: %s", cacheKey)
-			cache := defaultCaches.Get(cacheKey)
+			logger.Debugf("restoring caches: %s", cacheKey)
+			cache := cacheStore.Get(cacheKey)
 			if cache == nil {
-				log.Warnf("cache not found: %s", cacheKey)
+				logger.Warnf("cache not found: %s", cacheKey)
 				continue
 			}
-			src := path.Join(result.GetCachePath(), cacheKey)
-			if !common.IsFileExists(src) {
-				log.Warnf("cache not found: %s", cacheKey)
+
+			hash := getCacheKey(ctx, c, cacheKey, cache)
+			if !cacheStore.HasHashPath(cacheKey, hash) {
+				logger.Warnf("cache not found: %s: %s", cacheKey, hash)
 				continue
 			}
-			if err := c.CopyToContainer(ctx, src, cache.Path, []string{}); err != nil {
-				log.Warnf("failed to restore cache: %s", cacheKey)
+
+			src := cacheStore.GetHashPath(cacheKey, hash)
+			if err := c.CopyToContainer(ctx, src, c.Inputs.WorkDir, []string{}); err != nil {
+				return fmt.Errorf("failed to restore cache: %s: %s", cacheKey, hash)
 			}
 		}
 		return nil
 	}
+}
+
+func NewCachesSaveTask(c *docker.Container, sr *StepResult) Task {
+	return func(ctx context.Context) error {
+		if len(sr.Step.Caches) == 0 {
+			return nil
+		}
+		logger := GetLogger(ctx)
+		result := GetResult(ctx)
+		cacheStore := result.Runner.CacheStore
+
+		for _, cacheKey := range sr.Step.Caches {
+			logger.Debugf("saving caches: %s", cacheKey)
+			cache := cacheStore.Get(cacheKey)
+			if cache == nil {
+				logger.Warnf("cache not found: %s", cacheKey)
+				continue
+			}
+
+			hash := getCacheKey(ctx, c, cacheKey, cache)
+			if !cacheStore.HasHashPath(cacheKey, hash) {
+				target := cacheStore.GetHashPath(cacheKey, hash)
+				if err := c.CopyToHost(ctx, cache.Path, target); err != nil {
+					logger.Warnf("failed to save cache: %s: %s", cacheKey, err.Error())
+					_ = os.Remove(target)
+				}
+			} else {
+				logger.Debugf("cache already exists: %s: %s", cacheKey, hash)
+			}
+
+		}
+		return nil
+	}
+}
+
+func getCacheKey(ctx context.Context, c *docker.Container, cacheKey string, cache *models.Cache) string {
+	logger := GetLogger(ctx)
+	var shaKey = ""
+	if cache.IsSmartCache() {
+		script := strings.Replace(shaCheckScript, "{{patterns}}", strings.Join(cache.Key.Files, " "), 1)
+		cmd := []string{"sh", "-ce", script}
+		if err := c.Exec(ctx, c.Inputs.WorkDir, cmd, func(reader io.Reader) error {
+			data, err := io.ReadAll(reader)
+			if err != nil {
+				return err
+			}
+			ret := strings.Trim(string(data), "\r\n")
+			if ret == "NONE" {
+				return nil
+			}
+			shaKey = ret
+			return nil
+		}); err != nil {
+			logger.Warnf("failed to check cache: %s", cacheKey)
+		}
+	} else {
+		shaKey = "static"
+	}
+	return shaKey
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+	"github.com/zhex/local-bbp/internal/cache"
 	"github.com/zhex/local-bbp/internal/common"
 	"github.com/zhex/local-bbp/internal/docker"
 	"github.com/zhex/local-bbp/internal/models"
@@ -18,10 +19,11 @@ import (
 )
 
 type Runner struct {
-	Plan    *models.Plan
-	Config  *Config
-	Info    *info
-	Secrets map[string]string
+	Plan       *models.Plan
+	Config     *Config
+	Info       *info
+	Secrets    map[string]string
+	CacheStore *cache.Store
 }
 
 func New(project string, secrets map[string]string) *Runner {
@@ -44,6 +46,7 @@ func (r *Runner) LoadPlan() error {
 	if err != nil {
 		return err
 	}
+	r.CacheStore = cache.NewStore(path.Join(r.Config.OutputDir, "cache"), nil)
 	return nil
 }
 
@@ -172,6 +175,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 		NewDownloadArtifactsTask(c, sr),
 		NewScriptTask(c, sr, sr.Step.Script),
 		NewSaveArtifactsTask(c, sr),
+		NewCachesSaveTask(c, sr),
 	)
 
 	if len(sr.Step.AfterScript) > 0 {

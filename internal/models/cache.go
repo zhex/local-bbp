@@ -23,6 +23,10 @@ func NewCache(path string, files []string) *Cache {
 	}
 }
 
+func (c *Cache) IsSmartCache() bool {
+	return c.Key != nil
+}
+
 func (c *Cache) UnmarshalYAML(value *yaml.Node) error {
 	if value.Kind == yaml.ScalarNode {
 		var path string
