@@ -1,10 +1,15 @@
 pipelines:
   default:
     - step:
-        name: cache
+        name: build
         script:
-          - echo "Hello, World"
-          - cat node_modules/test.txt
+          - npm i
+        caches:
+          - node
+    - step:
+        name: test
+        script:
+          - npm test
         caches:
           - node
 

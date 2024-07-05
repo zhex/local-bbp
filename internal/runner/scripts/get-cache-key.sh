@@ -9,9 +9,17 @@ files=""
 # Use find to list files for each pattern and append them to the files string
 for pattern in $patterns
 do
-    for file in $(find . -type f -name "$pattern"); do
-        files="$files $file"
-    done
+    case "$pattern" in
+        *\** | *\?*)
+            # Use find to locate files matching the pattern
+            for file in $(find . -type f -name "$pattern"); do
+                files="$files $file"
+            done
+        ;;
+        *)
+            files="$files $pattern"
+        ;;
+    esac
 done
 
 # Check if no files were found

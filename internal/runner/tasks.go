@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-//go:embed scripts/get-sha265.sh
+//go:embed scripts/get-cache-key.sh
 var shaCheckScript string
 
 func NewImagePullTask(c *docker.Container) Task {
@@ -63,7 +63,7 @@ func NewContainerCreateTask(c *docker.Container, sr *StepResult) Task {
 				},
 			)
 		}
-		return c.Create(ctx, net, true, mounts)
+		return c.Create(ctx, net, false, mounts)
 	}
 }
 
@@ -281,19 +281,21 @@ func NewCachesRestoreTask(c *docker.Container, sr *StepResult) Task {
 			logger.Debugf("restoring caches: %s", cacheKey)
 			cache := cacheStore.Get(cacheKey)
 			if cache == nil {
-				logger.Warnf("cache not found: %s", cacheKey)
+				logger.Debugf("cache not found: %s", cacheKey)
 				continue
 			}
 
 			hash := getCacheKey(ctx, c, cacheKey, cache)
 			if !cacheStore.HasHashPath(cacheKey, hash) {
-				logger.Warnf("cache not found: %s: %s", cacheKey, hash)
+				logger.Debugf("cache not found: %s: %s", cacheKey, hash)
 				continue
 			}
 
 			src := cacheStore.GetHashPath(cacheKey, hash)
 			if err := c.CopyToContainer(ctx, src, c.Inputs.WorkDir, []string{}); err != nil {
 				return fmt.Errorf("failed to restore cache: %s: %s", cacheKey, hash)
+			} else {
+				logger.Debugf("cache restored: %s: %s", cacheKey, hash)
 			}
 		}
 		return nil
@@ -321,11 +323,13 @@ func NewCachesSaveTask(c *docker.Container, sr *StepResult) Task {
 			if !cacheStore.HasHashPath(cacheKey, hash) {
 				target := cacheStore.GetHashPath(cacheKey, hash)
 				if err := c.CopyToHost(ctx, cache.Path, target); err != nil {
-					logger.Warnf("failed to save cache: %s: %s", cacheKey, err.Error())
+					logger.Debugf("failed to save cache: %s: %s", cacheKey, err.Error())
 					_ = os.Remove(target)
+				} else {
+					logger.Debugf("cache saved: %s: %s", cacheKey, hash)
 				}
 			} else {
-				logger.Debugf("cache already exists: %s: %s", cacheKey, hash)
+				logger.Debugf("skipp cache save, the cache already exists: %s: %s", cacheKey, hash)
 			}
 
 		}
