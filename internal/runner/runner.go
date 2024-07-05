@@ -46,7 +46,7 @@ func (r *Runner) LoadPlan() error {
 	if err != nil {
 		return err
 	}
-	r.CacheStore = cache.NewStore(path.Join(r.Config.OutputDir, "cache"), nil)
+	r.CacheStore = cache.NewStore(path.Join(r.Config.OutputDir, "cache"), r.Plan.Definitions.Caches)
 	return nil
 }
 
