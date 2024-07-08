@@ -12,7 +12,7 @@ func GetGitCommit(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.Trim(string(out), "\r\n"), nil
+	return trimOutput(out), nil
 }
 
 func GetGitBranch(path string) (string, error) {
@@ -22,7 +22,7 @@ func GetGitBranch(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.Trim(string(out), "\r\n"), nil
+	return trimOutput(out), nil
 }
 
 func GetGitOwner(path string) (string, error) {
@@ -32,5 +32,9 @@ func GetGitOwner(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.Trim(string(out), "\r\n"), nil
+	return trimOutput(out), nil
+}
+
+func trimOutput(data []byte) string {
+	return strings.Trim(string(data), "\r\n")
 }
