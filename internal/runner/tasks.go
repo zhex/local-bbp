@@ -57,7 +57,7 @@ func NewContainerCreateTask(c *docker.Container, sr *StepResult) Task {
 					Type:   mount.TypeBind,
 				},
 				mount.Mount{
-					Source: result.Runner.Config.HostDockerCLI,
+					Source: result.Runner.Config.HostDockerCLIPath,
 					Target: "/usr/local/bin/docker",
 					Type:   mount.TypeBind,
 				},

@@ -7,37 +7,34 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/zhex/local-bbp/internal/cache"
 	"github.com/zhex/local-bbp/internal/common"
+	"github.com/zhex/local-bbp/internal/config"
 	"github.com/zhex/local-bbp/internal/docker"
 	"github.com/zhex/local-bbp/internal/models"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path"
-	"path/filepath"
 	"runtime"
 	"time"
 )
 
 type Runner struct {
 	Plan       *models.Plan
-	Config     *Config
-	Info       *info
+	Config     *config.Config
+	Info       *ProjectInfo
 	Secrets    map[string]string
 	CacheStore *cache.Store
 }
 
-func New(project string, secrets map[string]string) *Runner {
-	c := NewConfig()
-	fullPath, _ := filepath.Abs(project)
-	c.HostProjectPath = fullPath
+func New(projPath string, conf *config.Config, secrets map[string]string) *Runner {
 	return &Runner{
-		Config:  c,
-		Info:    newInfo(fullPath),
+		Config:  conf,
+		Info:    NewProjInfo(projPath),
 		Secrets: secrets,
 	}
 }
 
 func (r *Runner) LoadPlan() error {
-	data, err := os.ReadFile(path.Join(r.Config.HostProjectPath, "bitbucket-pipelines.yml"))
+	data, err := os.ReadFile(path.Join(r.Info.Path, "bitbucket-pipelines.yml"))
 	if err != nil {
 		return err
 	}
@@ -140,7 +137,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 		&docker.Input{
 			Name:    fmt.Sprintf("bbp-%s-%s", sr.Result.ID, sr.GetIdxString()),
 			Image:   image,
-			HostDir: r.Config.HostProjectPath,
+			HostDir: r.Info.Path,
 			WorkDir: r.Config.WorkDir,
 			Envs:    common.MergeMaps(r.getEnvs(sr), r.Secrets),
 		},
@@ -203,9 +200,9 @@ func (r *Runner) getEnvs(sr *StepResult) map[string]string {
 		"BITBUCKET_GIT_HTTP_ORIGIN":     "BITBUCKET_GIT_HTTP_ORIGIN",
 		"BITBUCKET_GIT_SSH_ORIGIN":      "BITBUCKET_GIT_SSH_ORIGIN",
 		"BITBUCKET_PIPELINE_UUID":       uuid.New().String(),
-		"BITBUCKET_PROJECT_KEY":         r.Info.ProjectName,
-		"BITBUCKET_PROJECT_UUID":        r.Info.ProjectID,
-		"BITBUCKET_REPO_FULL_NAME":      path.Base(r.Config.HostProjectPath),
+		"BITBUCKET_PROJECT_KEY":         r.Info.Name,
+		"BITBUCKET_PROJECT_UUID":        r.Info.ID,
+		"BITBUCKET_REPO_FULL_NAME":      path.Base(r.Info.Path),
 		"BITBUCKET_REPO_IS_PRIVATE":     "true",
 		"BITBUCKET_REPO_OWNER":          r.Info.Owner,
 		"BITBUCKET_REPO_OWNER_UUID":     r.Info.OwnerID,
@@ -215,7 +212,7 @@ func (r *Runner) getEnvs(sr *StepResult) map[string]string {
 		"BITBUCKET_STEP_RUN_NUMBER":     sr.GetIdxString(),
 		"BITBUCKET_STEP_TRIGGERER_UUID": r.Info.OwnerID,
 		"BITBUCKET_STEP_UUID":           sr.ID.String(),
-		"BITBUCKET_WORKSPACE":           r.Info.ProjectName,
+		"BITBUCKET_WORKSPACE":           r.Info.Name,
 		"CI":                            "true",
 		"DOCKER_HOST":                   "unix:///var/run/docker.sock",
 		"PIPELINES_JWT_TOKEN":           "PIPELINES_JWT_TOKEN",

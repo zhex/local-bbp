@@ -3,9 +3,11 @@ package cmd
 import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/zhex/local-bbp/internal/config"
 	"github.com/zhex/local-bbp/internal/parser"
 	"github.com/zhex/local-bbp/internal/runner"
 	"os"
+	"path/filepath"
 )
 
 func newRunCmd() *cobra.Command {
@@ -27,7 +29,16 @@ func newRunCmd() *cobra.Command {
 				secrets = parser.ParseSecrets(data)
 			}
 
-			r := runner.New(proj, secrets)
+			c, err := config.LoadConfig()
+			if err != nil {
+				log.Fatalf("Error loading config: %s", err)
+			}
+
+			fullPath, _ := filepath.Abs(proj)
+			if !filepath.IsAbs(c.OutputDir) {
+				c.OutputDir = filepath.Join(fullPath, c.OutputDir)
+			}
+			r := runner.New(fullPath, c, secrets)
 			r.Run(name)
 		},
 	}
