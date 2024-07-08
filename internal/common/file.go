@@ -2,9 +2,11 @@ package common
 
 import (
 	"archive/tar"
+	"compress/gzip"
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -20,14 +22,28 @@ func IsDirExists(path string) bool {
 	return !os.IsNotExist(err) && f.IsDir()
 }
 
-func Untar(src, dest string) error {
+func ExtractTarFromFile(src, dest string) error {
 	file, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	tarReader := tar.NewReader(file)
+	return ExtractTar(file, dest)
+}
+
+func ExtractTarGz(gzipStream io.Reader, dest string) error {
+	stream, err := gzip.NewReader(gzipStream)
+	if err != nil {
+		return err
+	}
+	defer stream.Close()
+
+	return ExtractTar(stream, dest)
+}
+
+func ExtractTar(reader io.Reader, dest string) error {
+	tarReader := tar.NewReader(reader)
 	for {
 		header, err := tarReader.Next()
 		if err == io.EOF {
@@ -59,7 +75,6 @@ func Untar(src, dest string) error {
 			continue
 		}
 	}
-
 	return nil
 }
 
@@ -125,4 +140,21 @@ func GetFilesSha256(paths []string) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
+}
+
+func DownloadFile(url, target string) error {
+	file, err := os.Create(target)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	_, err = io.Copy(file, resp.Body)
+	return err
 }

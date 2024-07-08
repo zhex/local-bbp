@@ -8,34 +8,36 @@ import (
 )
 
 type Config struct {
-	WorkDir           string `json:"workDir"`
-	DefaultImage      string `json:"defaultImage"`
-	OutputDir         string `json:"outputDir"`
-	HostDockerDaemon  string `json:"hostDockerDaemon"`
-	HostDockerCLIPath string `json:"hostDockerCLI"`
+	WorkDir          string `json:"workDir"`
+	DefaultImage     string `json:"defaultImage"`
+	OutputDir        string `json:"outputDir"`
+	DockerVersion    string `json:"dockerVersion"`
+	HostDockerDaemon string `json:"hostDockerDaemon"`
+	ToolDir          string `json:"toolDir"`
 }
 
 func NewConfig() *Config {
-	home, _ := getConfigHome()
+	home, _ := GetConfigHome()
 
 	return &Config{
-		DefaultImage:      "atlassian/default-image:4",
-		WorkDir:           "/opt/atlassian/pipelines/agent/build",
-		OutputDir:         "bbp",
-		HostDockerDaemon:  "/var/run/docker.sock",
-		HostDockerCLIPath: path.Join(home, "tools/docker"),
+		DefaultImage:     "atlassian/default-image:4",
+		WorkDir:          "/opt/atlassian/pipelines/agent/build",
+		OutputDir:        "bbp",
+		DockerVersion:    "19.03.15",
+		HostDockerDaemon: "/var/run/docker.sock",
+		ToolDir:          path.Join(home, "tools"),
 	}
 }
 
 func (c *Config) Persistent() error {
-	home, err := getConfigHome()
+	home, err := GetConfigHome()
 	if err != nil {
 		return err
 	}
 	if !common.IsDirExists(home) {
 		_ = os.Mkdir(home, 0755)
 	}
-	filePath := getConfigFile()
+	filePath := GetConfigFile()
 	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err

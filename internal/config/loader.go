@@ -8,7 +8,7 @@ import (
 )
 
 func LoadConfig() (*Config, error) {
-	filePath := getConfigFile()
+	filePath := GetConfigFile()
 	if !common.IsFileExists(filePath) {
 		c := NewConfig()
 		err := c.Persistent()
@@ -27,7 +27,7 @@ func LoadConfig() (*Config, error) {
 	return &c, nil
 }
 
-func getConfigHome() (string, error) {
+func GetConfigHome() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -35,7 +35,7 @@ func getConfigHome() (string, error) {
 	return filepath.Join(homeDir, ".bbp"), nil
 }
 
-func getConfigFile() string {
-	home, _ := getConfigHome()
+func GetConfigFile() string {
+	home, _ := GetConfigHome()
 	return filepath.Join(home, "config.json")
 }

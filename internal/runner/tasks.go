@@ -57,7 +57,7 @@ func NewContainerCreateTask(c *docker.Container, sr *StepResult) Task {
 					Type:   mount.TypeBind,
 				},
 				mount.Mount{
-					Source: result.Runner.Config.HostDockerCLIPath,
+					Source: path.Join(result.Runner.Config.ToolDir, common.GetArch(), "docker/docker"),
 					Target: "/usr/local/bin/docker",
 					Type:   mount.TypeBind,
 				},
@@ -231,7 +231,7 @@ func NewSaveArtifactsTask(c *docker.Container, sr *StepResult) Task {
 			}
 
 			artifactFile := path.Join(target, tarName)
-			err = common.Untar(artifactFile, target)
+			err = common.ExtractTarFromFile(artifactFile, target)
 			if err != nil {
 				return fmt.Errorf("failed to untar artifact: %w", err)
 			}
