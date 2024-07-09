@@ -129,8 +129,8 @@ func (r *Runner) Run(name string) {
 
 func (r *Runner) newStepTask(sr *StepResult) Task {
 	image := r.Config.DefaultImage
-	if sr.Step.Image != "" {
-		image = sr.Step.Image
+	if sr.Step.HasImage() {
+		image = sr.Step.Image.Name
 	}
 
 	c := docker.NewContainer(

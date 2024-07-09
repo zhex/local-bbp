@@ -7,7 +7,7 @@ const StepTriggerManual StepTrigger = "manual"
 
 type Step struct {
 	Name        string            `yaml:"name"`
-	Image       string            `yaml:"image"`
+	Image       *Image            `yaml:"image"`
 	Script      StepScript        `yaml:"script"`
 	AfterScript []string          `yaml:"after-script"`
 	Environment map[string]string `yaml:"environment"`
@@ -31,4 +31,8 @@ func (s *Step) GetName() string {
 		return "default"
 	}
 	return s.Name
+}
+
+func (s *Step) HasImage() bool {
+	return s.Image != nil && s.Image.Name != ""
 }

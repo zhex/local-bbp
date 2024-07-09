@@ -3,7 +3,7 @@ package models
 import "strings"
 
 type Plan struct {
-	DefaultImage string      `yaml:"image"`
+	DefaultImage *Image      `yaml:"image"`
 	Pipelines    *Pipeline   `yaml:"pipelines"`
 	Definitions  *Definition `yaml:"definitions"`
 }
