@@ -17,6 +17,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -230,9 +231,31 @@ func (c *Container) Wait(ctx context.Context) error {
 }
 
 func (c *Container) getAuthString() string {
+	if c.Inputs.Image.AWS != nil {
+		auth, err := c.Inputs.Image.AWS.GetAuthData(c.Inputs.Image.Name)
+		if err != nil {
+			return ""
+		}
+		decodedToken, err := base64.StdEncoding.DecodeString(*auth.AuthorizationToken)
+		if err != nil {
+			return ""
+		}
+		fmt.Println(string(decodedToken))
+		token := strings.TrimPrefix(string(decodedToken), "AWS:")
+		authConfig := registry.AuthConfig{
+			Username:      "AWS",
+			Password:      token,
+			ServerAddress: *auth.ProxyEndpoint,
+		}
+		encodedJSON, _ := json.Marshal(authConfig)
+		return base64.URLEncoding.EncodeToString(encodedJSON)
+
+	}
+
 	if c.Inputs.Image.Username == "" || c.Inputs.Image.Password == "" {
 		return ""
 	}
+
 	authConfig := registry.AuthConfig{
 		Username: c.Inputs.Image.Username,
 		Password: c.Inputs.Image.Password,

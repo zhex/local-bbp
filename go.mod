@@ -3,6 +3,7 @@ module github.com/zhex/local-bbp
 go 1.22.3
 
 require (
+	github.com/aws/aws-sdk-go v1.54.16
 	github.com/docker/docker v27.0.0+incompatible
 	github.com/fatih/color v1.17.0
 	github.com/google/uuid v1.3.1
@@ -28,6 +29,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
