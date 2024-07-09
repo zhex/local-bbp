@@ -129,6 +129,9 @@ func (r *Runner) Run(name string) {
 
 func (r *Runner) newStepTask(sr *StepResult) Task {
 	image := r.Config.DefaultImage
+	if r.Plan.HasImage() {
+		image = r.Plan.DefaultImage.Name
+	}
 	if sr.Step.HasImage() {
 		image = sr.Step.Image.Name
 	}
@@ -214,7 +217,7 @@ func (r *Runner) getEnvs(sr *StepResult) map[string]string {
 		"BITBUCKET_STEP_UUID":           sr.ID.String(),
 		"BITBUCKET_WORKSPACE":           r.Info.Name,
 		"CI":                            "true",
-		"DOCKER_HOST":                   "unix:///var/run/docker.sock",
+		"DOCKER_HOST":                   fmt.Sprintf("unix://%s", r.Config.HostDockerDaemon),
 		"PIPELINES_JWT_TOKEN":           "PIPELINES_JWT_TOKEN",
 	}
 }

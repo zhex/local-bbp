@@ -36,3 +36,7 @@ func (p *Plan) GetCaches() Caches {
 	}
 	return p.Definitions.Caches
 }
+
+func (p *Plan) HasImage() bool {
+	return p.DefaultImage != nil && p.DefaultImage.Name != ""
+}
