@@ -5,6 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"gopkg.in/yaml.v3"
 	"strings"
 )
@@ -25,13 +26,31 @@ func extractAwsRegionFromImage(image string) string {
 
 func (a *AWSAuth) GetAuthData(image string) (*ecr.AuthorizationData, error) {
 	region := extractAwsRegionFromImage(image)
+
 	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(region),
-		Credentials: credentials.NewStaticCredentials(a.AccessKey, a.SecretKey, ""),
+		Region: aws.String(region),
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	if a.OIDCRole != "" {
+		stsSvc := sts.New(sess)
+		assumeRole, err := stsSvc.AssumeRole(&sts.AssumeRoleInput{
+			RoleArn: aws.String(a.OIDCRole),
+		})
+		if err != nil {
+			return nil, err
+		}
+		sess.Config.Credentials = credentials.NewStaticCredentials(
+			*assumeRole.Credentials.AccessKeyId,
+			*assumeRole.Credentials.SecretAccessKey,
+			*assumeRole.Credentials.SessionToken,
+		)
+	} else {
+		sess.Config.Credentials = credentials.NewStaticCredentials(a.AccessKey, a.SecretKey, "")
+	}
+
 	svc := ecr.New(sess)
 	token, err := svc.GetAuthorizationToken(&ecr.GetAuthorizationTokenInput{})
 	if err != nil {

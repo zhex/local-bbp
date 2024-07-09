@@ -240,7 +240,6 @@ func (c *Container) getAuthString() string {
 		if err != nil {
 			return ""
 		}
-		fmt.Println(string(decodedToken))
 		token := strings.TrimPrefix(string(decodedToken), "AWS:")
 		authConfig := registry.AuthConfig{
 			Username:      "AWS",
