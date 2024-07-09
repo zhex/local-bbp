@@ -28,7 +28,7 @@ func NewImagePullTask(c *docker.Container) Task {
 		if exists {
 			return nil
 		}
-		log.Debugf("pulling image %s", c.Inputs.Image)
+		log.Debugf("pulling image %s", c.Inputs.Image.Name)
 		return c.Pull(ctx)
 	}
 }

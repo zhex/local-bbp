@@ -2,11 +2,14 @@ package docker
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
@@ -35,7 +38,7 @@ func NewContainer(inputs *Input) *Container {
 }
 
 func (c *Container) IsImageExists(ctx context.Context) (bool, error) {
-	_, _, err := c.client.ImageInspectWithRaw(ctx, c.Inputs.Image)
+	_, _, err := c.client.ImageInspectWithRaw(ctx, c.Inputs.Image.Name)
 	if err != nil {
 		if client.IsErrNotFound(err) {
 			return false, nil
@@ -46,7 +49,9 @@ func (c *Container) IsImageExists(ctx context.Context) (bool, error) {
 }
 
 func (c *Container) Pull(ctx context.Context) error {
-	reader, err := c.client.ImagePull(ctx, c.Inputs.Image, image.PullOptions{})
+	reader, err := c.client.ImagePull(ctx, c.Inputs.Image.Name, image.PullOptions{
+		RegistryAuth: c.getAuthString(),
+	})
 	if err != nil {
 		return err
 	}
@@ -61,9 +66,10 @@ func (c *Container) Create(ctx context.Context, net *Network, requireVol bool, m
 		envs = append(envs, fmt.Sprintf("%s=%s", k, v))
 	}
 	conf := &container.Config{
-		Image: c.Inputs.Image,
+		Image: c.Inputs.Image.Name,
 		Tty:   true,
 		Env:   envs,
+		User:  fmt.Sprintf("%d", c.Inputs.Image.RunAsUser),
 	}
 
 	if requireVol {
@@ -221,4 +227,16 @@ func (c *Container) Wait(ctx context.Context) error {
 		return nil
 	}
 	return fmt.Errorf("exit with `FAILURE`: %v", statusCode)
+}
+
+func (c *Container) getAuthString() string {
+	if c.Inputs.Image.Username == "" || c.Inputs.Image.Password == "" {
+		return ""
+	}
+	authConfig := registry.AuthConfig{
+		Username: c.Inputs.Image.Username,
+		Password: c.Inputs.Image.Password,
+	}
+	encodedJSON, _ := json.Marshal(authConfig)
+	return base64.URLEncoding.EncodeToString(encodedJSON)
 }

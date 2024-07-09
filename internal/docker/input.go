@@ -1,8 +1,10 @@
 package docker
 
+import "github.com/zhex/local-bbp/internal/models"
+
 type Input struct {
 	Name    string
-	Image   string
+	Image   *models.Image
 	WorkDir string
 	HostDir string
 	Envs    map[string]string
