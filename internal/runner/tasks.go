@@ -358,6 +358,8 @@ func NewCreateServicesTask(c *docker.Container, sr *StepResult) Task {
 		if len(sr.Step.Services) == 0 {
 			return nil
 		}
+
+		fu := NewFieldUpdater(c.Inputs.Envs)
 		for _, service := range sr.Step.Services {
 			logger.Debugf("creating service: %s", service)
 			svc := result.Runner.Plan.Definitions.Services[service]
@@ -368,7 +370,7 @@ func NewCreateServicesTask(c *docker.Container, sr *StepResult) Task {
 				Name:         fmt.Sprintf("bbp-%s-%s", sr.GetIdxString(), service),
 				NetworkAlias: service,
 				Image:        svc.Image,
-				Envs:         common.MergeMaps(svc.Variables, c.Inputs.Envs),
+				Envs:         common.MergeMaps(fu.UpdateMap(svc.Variables), c.Inputs.Envs),
 			})
 			if err := sc.Create(ctx, c.Network, false, nil); err != nil {
 				return err

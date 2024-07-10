@@ -14,7 +14,6 @@ import (
 	"os"
 	"path"
 	"runtime"
-	"strings"
 	"time"
 )
 
@@ -138,8 +137,8 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 	if sr.Step.HasImage() {
 		image = sr.Step.Image
 	}
-	image = r.imageWithSecrets(image)
 
+	envs := common.MergeMaps(r.getEnvs(sr), r.Secrets)
 	c := docker.NewContainer(
 		&docker.Input{
 			Name:         fmt.Sprintf("bbp-%s-%s", sr.Result.ID, sr.GetIdxString()),
@@ -147,9 +146,10 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 			NetworkAlias: "build",
 			HostDir:      r.Info.Path,
 			WorkDir:      r.Config.WorkDir,
-			Envs:         common.MergeMaps(r.getEnvs(sr), r.Secrets),
+			Envs:         envs,
 		},
 	)
+	image = NewFieldUpdater(envs).UpdateImage(image)
 
 	t := ChainTask(
 		func(ctx context.Context) error {
@@ -236,37 +236,5 @@ func getColoredStatus(status string) string {
 		return common.ColorRed(status)
 	default:
 		return common.ColorGrey(status)
-	}
-}
-
-func (r *Runner) imageWithSecrets(image *models.Image) *models.Image {
-	if image == nil {
-		return nil
-	}
-	var newImage *models.Image
-	_ = common.DeepClone(image, &newImage)
-
-	r.updateFieldWithSecrets(&newImage.Name)
-	r.updateFieldWithSecrets(&newImage.Password)
-	if newImage.AWS != nil {
-		r.updateFieldWithSecrets(&newImage.AWS.AccessKey)
-		r.updateFieldWithSecrets(&newImage.AWS.SecretKey)
-		r.updateFieldWithSecrets(&newImage.AWS.OIDCRole)
-	}
-
-	return newImage
-}
-
-func (r *Runner) updateFieldWithSecrets(field *string) {
-	if field == nil {
-		return
-	}
-	if strings.HasPrefix(*field, "$") {
-		key := (*field)[1:]
-		if val, ok := r.Secrets[key]; ok {
-			*field = val
-		} else {
-			*field = ""
-		}
 	}
 }
