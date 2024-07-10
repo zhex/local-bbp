@@ -7,9 +7,10 @@ import (
 )
 
 type Network struct {
-	ID     string
-	Name   string
-	client *client.Client
+	ID         string
+	Name       string
+	client     *client.Client
+	Containers []*Container
 }
 
 func NewNetwork(name string) *Network {
@@ -27,6 +28,16 @@ func (n *Network) Create(ctx context.Context) error {
 	return nil
 }
 
+func (n *Network) AddService(c *Container) {
+	n.Containers = append(n.Containers, c)
+}
+
 func (n *Network) Destroy(ctx context.Context) error {
+	for _, c := range n.Containers {
+		if err := c.Destroy(ctx); err != nil {
+			return err
+		}
+	}
+	n.Containers = nil
 	return n.client.NetworkRemove(ctx, n.ID)
 }

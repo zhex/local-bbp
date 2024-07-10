@@ -73,6 +73,10 @@ func (c *Container) Create(ctx context.Context, net *Network, requireVol bool, m
 		User:  fmt.Sprintf("%d", c.Inputs.Image.RunAsUser),
 	}
 
+	if c.Inputs.NetworkAlias == "build" {
+		conf.Entrypoint = []string{"/bin/sh"}
+	}
+
 	if requireVol {
 		v, err := c.client.VolumeCreate(ctx, volume.CreateOptions{
 			Name: fmt.Sprintf("vol_%s", c.Inputs.Name),
@@ -90,10 +94,17 @@ func (c *Container) Create(ctx context.Context, net *Network, requireVol bool, m
 	}
 
 	hostConf := &container.HostConfig{
-		Mounts: mounts,
+		Mounts:      mounts,
+		NetworkMode: container.NetworkMode(net.Name),
 	}
 	plat := &v1.Platform{}
-	networkConf := &network.NetworkingConfig{}
+	networkConf := &network.NetworkingConfig{
+		EndpointsConfig: map[string]*network.EndpointSettings{
+			net.Name: {
+				Aliases: []string{c.Inputs.NetworkAlias},
+			},
+		},
+	}
 
 	cr, err := c.client.ContainerCreate(ctx, conf, hostConf, networkConf, plat, c.Inputs.Name)
 	if err != nil {
@@ -102,11 +113,26 @@ func (c *Container) Create(ctx context.Context, net *Network, requireVol bool, m
 	c.ID = cr.ID
 
 	c.Network = net
+	net.AddService(c)
 	return c.client.NetworkConnect(ctx, net.ID, c.ID, &network.EndpointSettings{})
 }
 
 func (c *Container) Start(ctx context.Context) error {
-	return c.client.ContainerStart(ctx, c.ID, container.StartOptions{})
+	err := c.client.ContainerStart(ctx, c.ID, container.StartOptions{})
+	if err != nil {
+		return err
+	}
+	for {
+		inspector, err := c.client.ContainerInspect(ctx, c.ID)
+		if err != nil {
+			return err
+		}
+		if inspector.State.Running && (inspector.State.Health == nil || inspector.State.Health.Status == "healthy") {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return nil
 }
 
 func (c *Container) Exec(ctx context.Context, workdir string, cmd []string, outputHandler func(reader io.Reader) error) error {

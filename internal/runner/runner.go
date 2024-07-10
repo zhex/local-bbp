@@ -142,11 +142,12 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 
 	c := docker.NewContainer(
 		&docker.Input{
-			Name:    fmt.Sprintf("bbp-%s-%s", sr.Result.ID, sr.GetIdxString()),
-			Image:   image,
-			HostDir: r.Info.Path,
-			WorkDir: r.Config.WorkDir,
-			Envs:    common.MergeMaps(r.getEnvs(sr), r.Secrets),
+			Name:         fmt.Sprintf("bbp-%s-%s", sr.Result.ID, sr.GetIdxString()),
+			Image:        image,
+			NetworkAlias: "build",
+			HostDir:      r.Info.Path,
+			WorkDir:      r.Config.WorkDir,
+			Envs:         common.MergeMaps(r.getEnvs(sr), r.Secrets),
 		},
 	)
 
@@ -162,6 +163,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 		},
 		NewImagePullTask(c),
 		NewContainerCreateTask(c, sr),
+		NewCreateServicesTask(c, sr),
 		NewContainerStartTask(c),
 		NewCloneTask(c),
 		NewCachesRestoreTask(c, sr),

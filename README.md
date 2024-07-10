@@ -1,11 +1,16 @@
 # Local-BBP
 
+![GitHub License](https://img.shields.io/github/license/zhex/local-bbp)
+![GitHub Release](https://img.shields.io/github/v/release/zhex/local-bbp)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/zhex/local-bbp)
+
+
 Local-BBP is an open-source CLI tool written in Go, designed to simulate Bitbucket pipelines on your local machine. This tool allows developers to test and debug their pipeline configurations faster and more efficiently before pushing to Bitbucket.
 
 
 ## Why Local-BBP?
 
-As a developer, I often find that the first 5-10 pipeline runs for a new project fail due to configuration issues. This can be incredibly time-consuming and frustrating, as each failure requires a push to Bitbucket, a wait for the pipeline to run, and then reviewing the results to identify and fix issues. With Local-BBP, I can run and debug these pipelines locally, saving time and reducing the number of failed runs in the actual CI environment.
+As a developer, I often find that the first few pipeline runs for a new project fail due to configuration issues. This can be incredibly time-consuming and frustrating, as each failure requires a push to Bitbucket, a wait for the pipeline to run, and then reviewing the results to identify and fix issues. With Local-BBP, I can run and debug these pipelines locally, saving time and reducing the number of failed runs in the actual CI environment.
 
 ## Supported Features
 

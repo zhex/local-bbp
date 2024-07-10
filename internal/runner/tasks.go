@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 )
 
 //go:embed scripts/get-cache-key.sh
@@ -46,7 +47,7 @@ func NewContainerCreateTask(c *docker.Container, sr *StepResult) Task {
 			return err
 		}
 
-		logger.Debugf("creating container %s", c.Inputs.Name)
+		logger.Debugf("creating build container %s", c.Inputs.Name)
 		var mounts []mount.Mount
 		if sr.Step.Script.HasPipe() || common.Contains(sr.Step.Services, "docker") {
 			mounts = append(
@@ -69,6 +70,23 @@ func NewContainerCreateTask(c *docker.Container, sr *StepResult) Task {
 
 func NewContainerStartTask(c *docker.Container) Task {
 	return func(ctx context.Context) error {
+		logger := GetLogger(ctx)
+		var wg sync.WaitGroup
+		for _, svc := range c.Network.Containers {
+			if svc == c {
+				continue
+			}
+			wg.Add(1)
+			go func(svc *docker.Container) {
+				defer wg.Done()
+				if err := svc.Start(ctx); err != nil {
+					logger.Errorf("failed to start service %s: %s", svc.Inputs.Name, err.Error())
+				} else {
+					logger.Debugf("service started: %s", svc.Inputs.Name)
+				}
+			}(svc)
+		}
+		wg.Wait()
 		return c.Start(ctx)
 	}
 }
@@ -258,13 +276,8 @@ func NewContainerDestroyTask(c *docker.Container) Task {
 			return nil
 		}
 		logger := GetLogger(ctx)
-		logger.Debugf("destroying container %s", c.Inputs.Name)
-		net := c.Network
-		if err := c.Destroy(ctx); err != nil {
-			return nil
-		}
-		logger.Debugf("destroying network %s", net.Name)
-		return net.Destroy(ctx)
+		logger.Debugf("destroying network and containers %s", c.Inputs.Name)
+		return c.Network.Destroy(ctx)
 	}
 }
 
@@ -332,6 +345,34 @@ func NewCachesSaveTask(c *docker.Container, sr *StepResult) Task {
 				logger.Debugf("skipp cache save, the cache already exists: %s: %s", cacheKey, hash)
 			}
 
+		}
+		return nil
+	}
+}
+
+func NewCreateServicesTask(c *docker.Container, sr *StepResult) Task {
+	return func(ctx context.Context) error {
+		logger := GetLogger(ctx)
+		result := GetResult(ctx)
+
+		if len(sr.Step.Services) == 0 {
+			return nil
+		}
+		for _, service := range sr.Step.Services {
+			logger.Debugf("creating service: %s", service)
+			svc := result.Runner.Plan.Definitions.Services[service]
+			if svc == nil {
+				return fmt.Errorf("service not found: %s", service)
+			}
+			sc := docker.NewContainer(&docker.Input{
+				Name:         fmt.Sprintf("bbp-%s-%s", sr.GetIdxString(), service),
+				NetworkAlias: service,
+				Image:        svc.Image,
+				Envs:         common.MergeMaps(svc.Variables, c.Inputs.Envs),
+			})
+			if err := sc.Create(ctx, c.Network, false, nil); err != nil {
+				return err
+			}
 		}
 		return nil
 	}

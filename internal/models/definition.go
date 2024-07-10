@@ -1,6 +1,6 @@
 package models
 
 type Definition struct {
-	Caches   Caches
-	Services interface{}
+	Caches   Caches              `yaml:"caches"`
+	Services map[string]*Service `yaml:"services"`
 }
