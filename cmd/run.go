@@ -19,6 +19,11 @@ func newRunCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			proj := cmd.Flag("project").Value.String()
 			name := cmd.Flag("name").Value.String()
+			verbose, _ := cmd.Flags().GetBool("verbose")
+
+			if verbose {
+				log.SetLevel(log.DebugLevel)
+			}
 
 			var secrets map[string]string
 
@@ -60,6 +65,7 @@ func newRunCmd() *cobra.Command {
 
 	cmd.Flags().StringP("name", "n", "default", "Name of the workflow to run")
 	cmd.Flags().StringP("secrets-file", "s", "", "Path to the secrets file")
+	cmd.Flags().BoolP("verbose", "v", false, "Enable verbose logging")
 
 	return cmd
 }
