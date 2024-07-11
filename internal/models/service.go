@@ -6,3 +6,7 @@ type Service struct {
 	Variables map[string]string `yaml:"variables"`
 	Type      string            `yaml:"type"`
 }
+
+func (s *Service) IsDockerService() bool {
+	return s.Type == "docker"
+}

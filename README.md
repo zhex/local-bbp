@@ -23,6 +23,9 @@ As a developer, I often find that the first few pipeline runs for a new project 
 - [x] Smart caches
 - [x] Pipe
 - [x] Services
+  - [x] Sidecars
+  - [x] Default Docker
+  - [ ] Custom Docker
 - [x] Secret variables from file
 - [ ] Stage
 - [ ] Conditional steps
@@ -44,7 +47,7 @@ curl -s https://raw.githubusercontent.com/zhex/local-bbp/main/scripts/install.sh
 
 You need to have Docker installed on your machine to run Local-BBP.
 
-To simulate your Bitbucket pipeline locally, navigate to the directory containing your bitbucket-pipelines.yml file and run the following command to list the available pipelines:
+To simulate your Bitbucket pipeline locally, navigate to the project directory containing your bitbucket-pipelines.yml file and run the following command to list the available pipelines:
 
 ```bash
 bbp list
@@ -72,15 +75,20 @@ example config file:
 {
     // the default workdir in the build container
     "workDir": "/opt/atlassian/pipelines/agent/build",
+    
     // the default image to use in the build container if not specified in the bitbucket-pipelines.yaml file
     "defaultImage": "atlassian/default-image:4",
+    
     // the default output directory for the pipeline results, base on the project directory if relative path is used 
     "outputDir": "bbp",
+    
     // the default linux docker version to use in the build container 
     // download automatically from https://download.docker.com/linux/static/stable/
     "dockerVersion": "19.03.15",
+    
     // the docker daemon socket path in your host machine
     "hostDockerDaemon": "/var/run/docker.sock",
+    
     // the path for the cli to download required tools
     "toolDir": "/Users/zhex/.bbp/tools"
 }
@@ -105,7 +113,7 @@ MY_SECRET="my-secret-value"
 MY_OTHER_SECRET="my-other-secret-value"
 ```
 
-use the -v flag to see the verbose output for more details:
+use the -v flag to view the verbose output for more details:
 
 ```bash
 bbp run -n default -v
