@@ -17,6 +17,7 @@ func CreateRootCmd(version string) *cobra.Command {
 	rootCmd.PersistentFlags().StringP("project", "p", ".", "Path to the project directory")
 
 	rootCmd.AddCommand(
+		newListCmd(),
 		newRunCmd(),
 		newValidateCmd(),
 	)

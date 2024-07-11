@@ -24,10 +24,32 @@ func (p *Plan) GetPipeline(name string) []*Action {
 		name = strings.TrimPrefix(name, "tag/")
 		return p.Pipelines.Tags[name]
 	}
-	if _, ok := p.Pipelines.Custom[name]; ok {
+	if strings.HasPrefix(name, "custom/") {
+		name = strings.TrimPrefix(name, "custom/")
 		return p.Pipelines.Custom[name]
 	}
 	return nil
+}
+
+func (p *Plan) GetPipelineNames() []string {
+	names := make([]string, 0)
+	if p.Pipelines.Default != nil {
+		names = append(names, "default")
+	}
+	for name := range p.Pipelines.Custom {
+		names = append(names, "custom/"+name)
+	}
+	for name := range p.Pipelines.Branches {
+		names = append(names, "branch/"+name)
+	}
+	for name := range p.Pipelines.PullRequests {
+		names = append(names, "pr/"+name)
+	}
+	for name := range p.Pipelines.Tags {
+		names = append(names, "tag/"+name)
+	}
+	return names
+
 }
 
 func (p *Plan) GetCaches() Caches {

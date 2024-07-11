@@ -24,6 +24,7 @@ As a developer, I often find that the first few pipeline runs for a new project 
 - [x] Pipe
 - [x] Services
 - [x] Secret variables from file
+- [ ] Stage
 - [ ] Settings
   - [x] Default image
   - [ ] Timeout
@@ -42,7 +43,13 @@ curl -s https://raw.githubusercontent.com/zhex/local-bbp/main/scripts/install.sh
 
 You need to have Docker installed on your machine to run Local-BBP.
 
-To simulate your Bitbucket pipeline locally, navigate to the directory containing your bitbucket-pipelines.yml file and run:
+To simulate your Bitbucket pipeline locally, navigate to the directory containing your bitbucket-pipelines.yml file and run the following command to list the available pipelines:
+
+```bash
+bbp list
+```
+
+then run the default pipeline:
 
 ```bash
 bbp run
@@ -77,7 +84,6 @@ example config file:
     "toolDir": "/Users/zhex/.bbp/tools"
 }
 ```
-
 
 You can also specify a path to the project directory containing the [bitbucket-pipelines.yml](https://support.atlassian.com/bitbucket-cloud/docs/bitbucket-pipelines-configuration-reference/) file:
 
