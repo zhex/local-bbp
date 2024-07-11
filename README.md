@@ -25,6 +25,7 @@ As a developer, I often find that the first few pipeline runs for a new project 
 - [x] Services
 - [x] Secret variables from file
 - [ ] Stage
+- [ ] Conditional steps
 - [ ] Settings
   - [x] Default image
   - [ ] Timeout
