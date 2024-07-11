@@ -15,21 +15,17 @@ As a developer, I often find that the first few pipeline runs for a new project 
 ## Supported Features
 
 - [x] Run pipeline
-  - [x] Run default
-  - [x] Run branches
-  - [x] Run custom
-  - [x] Run pull request
-  - [x] Run tags
-- [x] Parallel steps
-- [x] Secret variables from file
-- [x] Custom Docker image in single step
+  - [x] Sequential steps
+  - [x] Parallel steps
+- [x] Custom Step Image
+- [x] Private image repository access
 - [x] Artifacts
 - [x] Smart caches
-- [x] Pipe image in script
-- [ ] Services
-- [ ] Permissions
+- [x] Pipe
+- [x] Services
+- [x] Secret variables from file
 - [ ] Settings
-  - [ ] Default image
+  - [x] Default image
   - [ ] Timeout
   - [ ] Container Size
 - [x] Validate bitbucket-pipelines.yml file
@@ -57,26 +53,55 @@ This command will execute your default pipeline steps as defined in the bitbucke
 You can also specify a specific pipeline to run using the -n flag:
 
 ```bash
-bbp run -n my-pipeline
+bbp run -n default
 ```
+
+When first running the command, Local-BBP will init the config file in the `~/.bbp/config.json` also download the Linux docker cli binaries.
+
+example config file:
+
+```json5
+{
+    // the default workdir in the build container
+    "workDir": "/opt/atlassian/pipelines/agent/build",
+    // the default image to use in the build container if not specified in the bitbucket-pipelines.yaml file
+    "defaultImage": "atlassian/default-image:4",
+    // the default output directory for the pipeline results, base on the project directory if relative path is used 
+    "outputDir": "bbp",
+    // the default linux docker version to use in the build container 
+    // download automatically from https://download.docker.com/linux/static/stable/
+    "dockerVersion": "19.03.15",
+    // the docker daemon socket path in your host machine
+    "hostDockerDaemon": "/var/run/docker.sock",
+    // the path for the cli to download required tools
+    "toolDir": "/Users/zhex/.bbp/tools"
+}
+```
+
 
 You can also specify a path to the project directory containing the [bitbucket-pipelines.yml](https://support.atlassian.com/bitbucket-cloud/docs/bitbucket-pipelines-configuration-reference/) file:
 
 ```bash
-bbp run -p /path/to/project
+bbp run -n "pr/**" -p /path/to/project
 ```
 
 Support secret variables by providing a path to the secrets file:
 
 ```bash
-bbp run -s /path/to/secrets
+bbp run -n default -s /path/to/secrets
 ```
 
 The secret file format is the same as dot env file. Sample secrets file:
 
-```
+```dotenv
 MY_SECRET="my-secret-value"
 MY_OTHER_SECRET="my-other-secret-value"
+```
+
+use the -v flag to see the verbose output for more details:
+
+```bash
+bbp run -n default -v
 ```
 
 Also, you can validate your bitbucket-pipelines.yml file using the following command:
