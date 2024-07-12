@@ -187,6 +187,15 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 		return nil
 	}))
 
+	t = t.WithCondition(func() bool {
+		changedFiles, err := common.GetGitChangedFiles(r.Info.Path)
+		if err != nil {
+			log.Warnf("Error getting git diff files: %s", err)
+			return false
+		}
+		return sr.Step.MatchCondition(changedFiles)
+	})
+
 	return func(ctx context.Context) error {
 		return t(WithLoggerComposeStepResult(ctx, sr))
 	}

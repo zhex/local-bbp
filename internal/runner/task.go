@@ -20,6 +20,17 @@ func (t Task) Then(next Task) Task {
 	}
 }
 
+func (t Task) WithCondition(cond func() bool) Task {
+	return func(ctx context.Context) error {
+		logger := GetLogger(ctx)
+		if !cond() {
+			logger.Infof("Skip step")
+			return nil
+		}
+		return t(ctx)
+	}
+}
+
 func (t Task) Finally(ft Task) Task {
 	return func(ctx context.Context) error {
 		err := t(ctx)

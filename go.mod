@@ -4,6 +4,7 @@ go 1.22.3
 
 require (
 	github.com/aws/aws-sdk-go v1.54.16
+	github.com/bmatcuk/doublestar/v4 v4.6.1
 	github.com/docker/docker v27.0.0+incompatible
 	github.com/fatih/color v1.17.0
 	github.com/google/uuid v1.3.1

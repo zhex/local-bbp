@@ -1,5 +1,7 @@
 package models
 
+import "github.com/bmatcuk/doublestar/v4"
+
 type StepTrigger string
 
 const StepTriggerAutomatic StepTrigger = "automatic"
@@ -35,4 +37,19 @@ func (s *Step) GetName() string {
 
 func (s *Step) HasImage() bool {
 	return s.Image != nil && s.Image.Name != ""
+}
+
+func (s *Step) MatchCondition(changedFiles []string) bool {
+	if s.Condition == nil {
+		return true
+	}
+	for _, pattern := range s.Condition.ChangeSets.IncludePaths {
+		for _, changedFile := range changedFiles {
+			matched, err := doublestar.PathMatch(pattern, changedFile)
+			if err == nil && matched {
+				return true
+			}
+		}
+	}
+	return false
 }
