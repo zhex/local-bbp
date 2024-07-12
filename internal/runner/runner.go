@@ -46,7 +46,7 @@ func (r *Runner) LoadPlan() error {
 	return nil
 }
 
-func (r *Runner) Run(name string) {
+func (r *Runner) Run(name string, targetBranch string) {
 	ctx := context.Background()
 
 	if r.Plan == nil {
@@ -87,13 +87,13 @@ func (r *Runner) Run(name string) {
 			for j, subAction := range action.Parallel.Actions {
 				idx := float32(i+1) + float32(j+1)/10
 				sr := result.AddStep(idx, subAction.Step.GetName(), subAction.Step)
-				parallelTasks = append(parallelTasks, r.newStepTask(sr))
+				parallelTasks = append(parallelTasks, r.newStepTask(sr, targetBranch))
 			}
 			actionTask = ParallelTask(r.getParallelSize(), parallelTasks...)
 		} else {
 			idx := float32(i + 1)
 			sr := result.AddStep(idx, action.Step.GetName(), action.Step)
-			actionTask = r.newStepTask(sr)
+			actionTask = r.newStepTask(sr, targetBranch)
 		}
 
 		if chain == nil {
@@ -127,7 +127,7 @@ func (r *Runner) Run(name string) {
 	}
 }
 
-func (r *Runner) newStepTask(sr *StepResult) Task {
+func (r *Runner) newStepTask(sr *StepResult, targetBranch string) Task {
 	image := &models.Image{
 		Name: r.Config.DefaultImage,
 	}
@@ -188,7 +188,7 @@ func (r *Runner) newStepTask(sr *StepResult) Task {
 	}))
 
 	t = t.WithCondition(func() bool {
-		changedFiles, err := common.GetGitChangedFiles(r.Info.Path)
+		changedFiles, err := common.GetGitChangedFiles(r.Info.Path, targetBranch)
 		if err != nil {
 			log.Warnf("Error getting git diff files: %s", err)
 			return false

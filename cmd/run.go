@@ -10,6 +10,7 @@ import (
 	"github.com/zhex/local-bbp/internal/runner"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func newRunCmd() *cobra.Command {
@@ -19,10 +20,15 @@ func newRunCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			proj := cmd.Flag("project").Value.String()
 			name := cmd.Flag("name").Value.String()
+			targetBranch := cmd.Flag("target-branch").Value.String()
 			verbose, _ := cmd.Flags().GetBool("verbose")
 
 			if verbose {
 				log.SetLevel(log.DebugLevel)
+			}
+
+			if !strings.HasPrefix(name, "pr/") {
+				targetBranch = ""
 			}
 
 			var secrets map[string]string
@@ -59,13 +65,14 @@ func newRunCmd() *cobra.Command {
 				c.OutputDir = filepath.Join(fullPath, c.OutputDir)
 			}
 			r := runner.New(fullPath, c, secrets)
-			r.Run(name)
+			r.Run(name, targetBranch)
 		},
 	}
 
 	cmd.Flags().StringP("name", "n", "default", "Name of the workflow to run")
 	cmd.Flags().StringP("secrets-file", "s", "", "Path to the secrets file")
 	cmd.Flags().BoolP("verbose", "v", false, "Enable verbose logging")
+	cmd.Flags().StringP("target-branch", "t", "main", "Target branch for a pull request pipeline. Default is 'main'")
 
 	return cmd
 }

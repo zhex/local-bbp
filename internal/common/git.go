@@ -35,7 +35,7 @@ func GetGitOwner(path string) (string, error) {
 	return trimOutput(out), nil
 }
 
-func GetGitChangedFiles(path string) ([]string, error) {
+func GetGitChangedFiles(path string, branch string) ([]string, error) {
 	cmd := exec.Command("git", "diff", "--name-only")
 	cmd.Dir = path
 	out, err := cmd.Output()
@@ -44,7 +44,11 @@ func GetGitChangedFiles(path string) ([]string, error) {
 	}
 	uncommittedChanges := strings.Split(trimOutput(out), "\n")
 
-	cmd2 := exec.Command("git", "diff", "--name-only", "HEAD", "HEAD~1")
+	if branch == "" {
+		branch = "HEAD~1"
+	}
+
+	cmd2 := exec.Command("git", "diff", "--name-only", "HEAD", branch)
 	cmd2.Dir = path
 	out2, err := cmd2.Output()
 	if err != nil {

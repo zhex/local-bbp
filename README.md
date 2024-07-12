@@ -127,6 +127,16 @@ bbp validate
 
 The validation rules are based on the official Bitbucket Pipelines configuration [schema](https://bitbucket.org/atlassianlabs/intellij-bitbucket-references-plugin/raw/master/src/main/resources/schemas/bitbucket-pipelines.schema.json).
 
+## Differences between Local-BBP and Bitbucket Pipelines
+
+Local-BBP is designed to simulate Bitbucket Pipelines as closely as possible, but there are some differences between the two:
+
+- Local-BBP runs pipelines on your local machine, so it may not have access to the same resources as the Bitbucket Pipelines environment.
+- Local-BBP does not support all the features of Bitbucket Pipelines, such as custom Docker images and custom services.
+- Local-BBP does not have the same security features as Bitbucket Pipelines, so you should be careful when running pipelines with sensitive data.
+- For services, Local-BBP use service name as the host name that you can access from the build container as the same what docker-compose does. However, in Bitbucket Pipelines, you can access the sidecar services by using `localhost`.
+- For the step condition, Bitbucket compares all the commits changes between the current and the target branch in the pull-request pipelines, and the last commit changes for the other types of pipelines. However, Local-BBP compares all the commits changes between the current and the target branch for all types of pipelines. In Local-BBP, the changes will also count in the uncommited changes to make the dev work easier.
+
 ## License
 
 Local-BBP is released under the MIT License. See [LICENSE](LICENSE) for more details.
