@@ -131,11 +131,11 @@ The validation rules are based on the official Bitbucket Pipelines configuration
 
 Local-BBP is designed to simulate Bitbucket Pipelines as closely as possible, but there are some differences between the two:
 
-- Local-BBP runs pipelines on your local machine, so it may not have access to the same resources as the Bitbucket Pipelines environment.
-- Local-BBP does not support all the features of Bitbucket Pipelines, such as custom Docker images and custom services.
-- Local-BBP does not have the same security features as Bitbucket Pipelines, so you should be careful when running pipelines with sensitive data.
-- For services, Local-BBP use service name as the host name that you can access from the build container as the same what docker-compose does. However, in Bitbucket Pipelines, you can access the sidecar services by using `localhost`.
-- For the step condition, Bitbucket compares all the commits changes between the current and the target branch in the pull-request pipelines, and the last commit changes for the other types of pipelines. However, Local-BBP compares all the commits changes between the current and the target branch for all types of pipelines. In Local-BBP, the changes will also count in the uncommited changes to make the dev work easier.
+- **Environment**: Local-BBP runs pipelines on your local machine, so it may not have access to the same resources as the Bitbucket Pipelines environment.
+- **Features**: Local-BBP does not support all the features of Bitbucket Pipelines, such as custom Docker images and custom services.
+- **Security**: Local-BBP does not have the same security features as Bitbucket Pipelines, so you should be careful when running pipelines with sensitive data.
+- **Service Access**: In Local-BBP, service names are used as hostnames similar to Docker Compose. In Bitbucket Pipelines, sidecar services are accessed via localhost.
+- **Step Condition**: Bitbucket Pipeline compares all commits between source and target branches in pull-request pipelines,, while in other pipelines, it compares the last commit. Local-BBP includes uncommitted changes for easier development.
 
 ## License
 
