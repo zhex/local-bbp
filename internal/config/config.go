@@ -8,24 +8,24 @@ import (
 )
 
 type Config struct {
-	WorkDir          string `json:"workDir"`
-	DefaultImage     string `json:"defaultImage"`
-	OutputDir        string `json:"outputDir"`
-	DockerVersion    string `json:"dockerVersion"`
-	HostDockerDaemon string `json:"hostDockerDaemon"`
-	ToolDir          string `json:"toolDir"`
+	WorkDir            string `json:"workDir"`
+	DefaultImage       string `json:"defaultImage"`
+	OutputDir          string `json:"outputDir"`
+	DockerVersion      string `json:"dockerVersion"`
+	DefaultDockerImage string `json:"defaultDockerImage"`
+	ToolDir            string `json:"toolDir"`
 }
 
 func NewConfig() *Config {
 	home, _ := GetConfigHome()
 
 	return &Config{
-		DefaultImage:     "atlassian/default-image:4",
-		WorkDir:          "/opt/atlassian/pipelines/agent/build",
-		OutputDir:        "bbp",
-		DockerVersion:    "19.03.15",
-		HostDockerDaemon: "/var/run/docker.sock",
-		ToolDir:          path.Join(home, "tools"),
+		DefaultImage:       "atlassian/default-image:4",
+		WorkDir:            "/opt/atlassian/pipelines/agent/build",
+		OutputDir:          "bbp",
+		DockerVersion:      "19.03.15",
+		DefaultDockerImage: "docker:27.0.3-dind-alpine3.20",
+		ToolDir:            path.Join(home, "tools"),
 	}
 }
 

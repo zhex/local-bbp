@@ -22,13 +22,14 @@ import (
 )
 
 type Container struct {
-	client  *client.Client
-	ID      string
-	UID     int
-	GID     int
-	Inputs  *Input
-	Network *Network
-	Vol     *volume.Volume
+	client          *client.Client
+	ID              string
+	UID             int
+	GID             int
+	Inputs          *Input
+	Network         *Network
+	Vol             *volume.Volume
+	DockerDaemonVol *volume.Volume
 }
 
 func NewContainer(inputs *Input) *Container {
@@ -73,8 +74,17 @@ func (c *Container) Create(ctx context.Context, net *Network, requireVol bool, m
 		User:  fmt.Sprintf("%d", c.Inputs.Image.RunAsUser),
 	}
 
+	if c.DockerDaemonVol != nil {
+
+		conf.Healthcheck = &container.HealthConfig{
+			Test:        []string{"CMD", "test", "-e", "/var/run/docker.sock"},
+			StartPeriod: 1 * time.Second,
+			Interval:    1 * time.Second,
+		}
+	}
+
 	if c.Inputs.NetworkAlias == "build" {
-		conf.Entrypoint = []string{"/bin/sh"}
+		conf.Entrypoint = c.Inputs.Entrypoint
 	}
 
 	if requireVol {
@@ -96,6 +106,7 @@ func (c *Container) Create(ctx context.Context, net *Network, requireVol bool, m
 	hostConf := &container.HostConfig{
 		Mounts:      mounts,
 		NetworkMode: container.NetworkMode(net.Name),
+		Privileged:  true,
 	}
 	plat := &v1.Platform{}
 	networkConf := &network.NetworkingConfig{
@@ -190,6 +201,9 @@ func (c *Container) Destroy(ctx context.Context) error {
 
 	if c.Vol != nil {
 		return c.client.VolumeRemove(ctx, c.Vol.Name, true)
+	}
+	if c.DockerDaemonVol != nil {
+		return c.client.VolumeRemove(ctx, c.DockerDaemonVol.Name, true)
 	}
 	return nil
 

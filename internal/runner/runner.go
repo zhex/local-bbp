@@ -42,6 +42,20 @@ func (r *Runner) LoadPlan() error {
 	if err != nil {
 		return err
 	}
+	if r.Plan.Definitions == nil {
+		r.Plan.Definitions = &models.Definition{}
+	}
+	if r.Plan.Definitions.Services == nil {
+		r.Plan.Definitions.Services = make(map[string]*models.Service)
+	}
+	if r.Plan.Definitions.Services["docker"] == nil {
+		r.Plan.Definitions.Services["docker"] = &models.Service{
+			Image: &models.Image{
+				Name: r.Config.DefaultDockerImage,
+			},
+			Type: "docker",
+		}
+	}
 	r.CacheStore = cache.NewStore(path.Join(r.Config.OutputDir, "cache"), r.Plan.GetCaches())
 	return nil
 }
@@ -147,6 +161,7 @@ func (r *Runner) newStepTask(sr *StepResult, targetBranch string) Task {
 			HostDir:      r.Info.Path,
 			WorkDir:      r.Config.WorkDir,
 			Envs:         envs,
+			Entrypoint:   []string{"/bin/sh"},
 		},
 	)
 	image = NewFieldUpdater(envs).UpdateImage(image)
@@ -232,7 +247,7 @@ func (r *Runner) getEnvs(sr *StepResult) map[string]string {
 		"BITBUCKET_STEP_UUID":           sr.ID.String(),
 		"BITBUCKET_WORKSPACE":           r.Info.Name,
 		"CI":                            "true",
-		"DOCKER_HOST":                   fmt.Sprintf("unix://%s", r.Config.HostDockerDaemon),
+		"DOCKER_HOST":                   "unix:///var/run/docker.sock",
 		"PIPELINES_JWT_TOKEN":           "PIPELINES_JWT_TOKEN",
 	}
 }

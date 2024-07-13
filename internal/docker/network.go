@@ -33,8 +33,18 @@ func (n *Network) AddService(c *Container) {
 }
 
 func (n *Network) Destroy(ctx context.Context) error {
+	var builder *Container
 	for _, c := range n.Containers {
+		if c.Inputs.NetworkAlias == "build" {
+			builder = c
+			continue
+		}
 		if err := c.Destroy(ctx); err != nil {
+			return err
+		}
+	}
+	if builder != nil {
+		if err := builder.Destroy(ctx); err != nil {
 			return err
 		}
 	}

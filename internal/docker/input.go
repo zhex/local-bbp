@@ -9,4 +9,5 @@ type Input struct {
 	WorkDir      string
 	HostDir      string
 	Envs         map[string]string
+	Entrypoint   []string
 }

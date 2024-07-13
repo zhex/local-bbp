@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"fmt"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/volume"
 	"github.com/google/uuid"
 	"github.com/zhex/local-bbp/internal/common"
 	"github.com/zhex/local-bbp/internal/docker"
@@ -50,12 +51,16 @@ func NewContainerCreateTask(c *docker.Container, sr *StepResult) Task {
 		logger.Debugf("creating build container %s", c.Inputs.Name)
 		var mounts []mount.Mount
 		if sr.Step.Script.HasPipe() || common.Contains(sr.Step.Services, "docker") {
+			vol := &volume.Volume{
+				Name: fmt.Sprintf("vol_bbp-%s-docker", sr.GetIdxString()),
+			}
+			c.DockerDaemonVol = vol
 			mounts = append(
 				mounts,
 				mount.Mount{
-					Source: result.Runner.Config.HostDockerDaemon,
-					Target: "/var/run/docker.sock",
-					Type:   mount.TypeBind,
+					Source: vol.Name,
+					Target: "/var/run",
+					Type:   mount.TypeVolume,
 				},
 				mount.Mount{
 					Source: path.Join(result.Runner.Config.ToolDir, common.GetArch(), "docker/docker"),
@@ -366,13 +371,28 @@ func NewCreateServicesTask(c *docker.Container, sr *StepResult) Task {
 			if svc == nil {
 				return fmt.Errorf("service not found: %s", service)
 			}
-			sc := docker.NewContainer(&docker.Input{
+
+			inputs := &docker.Input{
 				Name:         fmt.Sprintf("bbp-%s-%s", sr.GetIdxString(), service),
 				NetworkAlias: service,
 				Image:        svc.Image,
 				Envs:         common.MergeMaps(fu.UpdateMap(svc.Variables), c.Inputs.Envs),
-			})
-			if err := sc.Create(ctx, c.Network, false, nil); err != nil {
+			}
+
+			var mounts []mount.Mount
+
+			if svc.IsDockerService() {
+				inputs.Entrypoint = []string{"dockerd"}
+
+				mounts = append(mounts, mount.Mount{
+					Source: c.DockerDaemonVol.Name,
+					Target: "/var/run",
+					Type:   mount.TypeVolume,
+				})
+			}
+
+			sc := docker.NewContainer(inputs)
+			if err := sc.Create(ctx, c.Network, false, mounts); err != nil {
 				return err
 			}
 		}
