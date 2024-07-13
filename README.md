@@ -25,7 +25,7 @@ As a developer, I often find that the first few pipeline runs for a new project 
 - [x] Services
   - [x] Sidecars
   - [x] Default Docker
-  - [ ] Custom Docker
+  - [x] Custom Docker
 - [x] Secret variables from file
 - [ ] Stage
 - [x] Conditional steps
@@ -86,8 +86,8 @@ example config file:
     // download automatically from https://download.docker.com/linux/static/stable/
     "dockerVersion": "19.03.15",
     
-    // the docker daemon socket path in your host machine
-    "hostDockerDaemon": "/var/run/docker.sock",
+    // the default docker image for running the docker daemon for the build container
+    "defaultDockerImage": "docker:27.0.3-dind-alpine3.20",
     
     // the path for the cli to download required tools
     "toolDir": "/Users/zhex/.bbp/tools"
@@ -133,7 +133,6 @@ Local-BBP is designed to simulate Bitbucket Pipelines as closely as possible, bu
 
 - **Environment**: Local-BBP runs pipelines on your local machine, so it may not have access to the same resources as the Bitbucket Pipelines environment.
 - **Features**: Local-BBP does not support all the features of Bitbucket Pipelines, such as custom Docker images and custom services.
-- **Security**: Local-BBP does not have the same security features as Bitbucket Pipelines, so you should be careful when running pipelines with sensitive data.
 - **Service Access**: In Local-BBP, service names are used as hostnames similar to Docker Compose. In Bitbucket Pipelines, sidecar services are accessed via localhost.
 - **Step Condition**: Bitbucket Pipeline compares all commits between source and target branches in pull-request pipelines,, while in other pipelines, it compares the last commit. Local-BBP includes uncommitted changes for easier development.
 
