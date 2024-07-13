@@ -8,9 +8,11 @@ import (
 )
 
 func LoadConfig() (*Config, error) {
+	defaultConfig := NewConfig()
+
 	filePath := GetConfigFile()
 	if !common.IsFileExists(filePath) {
-		c := NewConfig()
+		c := defaultConfig
 		err := c.Persistent()
 		if err != nil {
 			return nil, err
@@ -24,6 +26,16 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if c.DefaultDockerImage == "" {
+		// fix the config file for the missing field in new version
+		c.DefaultDockerImage = defaultConfig.DefaultDockerImage
+		err := c.Persistent()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &c, nil
 }
 
