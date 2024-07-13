@@ -34,7 +34,17 @@ func NewContainerCreateTask(c *docker.Container, sr *StepResult) Task {
 
 		logger.Debugf("creating build container %s", c.Inputs.Name)
 		var mounts []mount.Mount
-		if sr.Step.Script.HasPipe() || common.Contains(sr.Step.Services, "docker") {
+
+		hasDockerService := false
+		for _, service := range sr.Step.Services {
+			svc := result.Runner.Plan.Definitions.Services[service]
+			if svc != nil && svc.IsDockerService() {
+				hasDockerService = true
+				break
+			}
+		}
+
+		if sr.Step.Script.HasPipe() || hasDockerService {
 			vol := &volume.Volume{
 				Name: fmt.Sprintf("vol_bbp-%s-docker", sr.GetIdxString()),
 			}
