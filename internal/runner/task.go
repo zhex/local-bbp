@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"time"
 )
 
 type Task func(ctx context.Context) error
@@ -94,5 +95,13 @@ func ParallelTask(size int, tasks ...Task) Task {
 			return err
 		}
 		return firstErr
+	}
+}
+
+func WithTimeout(task Task, timeout time.Duration) Task {
+	return func(ctx context.Context) error {
+		ctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+		return task(ctx)
 	}
 }

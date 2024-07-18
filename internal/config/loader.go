@@ -27,9 +27,23 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
+	needSave := false
+
 	if c.DefaultDockerImage == "" {
-		// fix the config file for the missing field in new version
 		c.DefaultDockerImage = defaultConfig.DefaultDockerImage
+		needSave = true
+	}
+	if c.MaxStepTimeout == 0 {
+		c.MaxStepTimeout = defaultConfig.MaxStepTimeout
+		needSave = true
+	}
+	if c.MaxPipelineTimeout == 0 {
+		c.MaxPipelineTimeout = defaultConfig.MaxPipelineTimeout
+		needSave = true
+	}
+
+	if needSave {
+		// fix the config file for the missing field in new version
 		err := c.Persistent()
 		if err != nil {
 			return nil, err

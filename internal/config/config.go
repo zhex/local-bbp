@@ -14,6 +14,8 @@ type Config struct {
 	DockerVersion      string `json:"dockerVersion"`
 	DefaultDockerImage string `json:"defaultDockerImage"`
 	ToolDir            string `json:"toolDir"`
+	MaxStepTimeout     int    `json:"maxStepTimeout"`
+	MaxPipelineTimeout int    `json:"maxPipelineTimeout"`
 }
 
 func NewConfig() *Config {
@@ -26,6 +28,8 @@ func NewConfig() *Config {
 		DockerVersion:      "19.03.15",
 		DefaultDockerImage: "docker:27.0.3-dind-alpine3.20",
 		ToolDir:            path.Join(home, "tools"),
+		MaxStepTimeout:     120,
+		MaxPipelineTimeout: 240,
 	}
 }
 

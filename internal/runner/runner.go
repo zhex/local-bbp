@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -194,15 +195,6 @@ func (r *Runner) newStepTask(sr *StepResult, targetBranch string) Task {
 	image = NewFieldUpdater(envs).UpdateImage(image)
 
 	t := ChainTask(
-		func(ctx context.Context) error {
-			ctx = WithLoggerComposeStepResult(ctx, sr)
-			logger := GetLogger(ctx)
-			logger.Infof("Start step: %s", sr.Name)
-			result := GetResult(ctx)
-			stepResult, _ := result.StepResults[sr.Index]
-			stepResult.StartTime = time.Now()
-			return nil
-		},
 		NewImagePullTask(c),
 		NewContainerCreateTask(c, sr),
 		NewCreateServicesTask(c, sr),
@@ -219,27 +211,39 @@ func (r *Runner) newStepTask(sr *StepResult, targetBranch string) Task {
 		t = t.Finally(NewCmdTask(c, sr, sr.Step.AfterScript))
 	}
 
-	t = t.Finally(NewContainerDestroyTask(c).Then(func(ctx context.Context) error {
-		logger := GetLogger(ctx)
-		result := GetResult(ctx)
-		stepResult, _ := result.StepResults[sr.Index]
-		stepResult.EndTime = time.Now()
-		d := stepResult.EndTime.Sub(stepResult.StartTime)
-		logger.Infof("End step: %s [%s] %s", sr.Name, getColoredStatus(stepResult.Status), common.ColorGrey(d.Round(time.Millisecond).String()))
-		return nil
-	}))
+	timeout := sr.Result.Runner.Config.MaxStepTimeout
+	if sr.Step.MaxTime > 0 {
+		timeout = sr.Step.MaxTime
+	}
 
-	t = t.WithCondition(func() bool {
-		changedFiles, err := common.GetGitChangedFiles(r.Info.Path, targetBranch)
-		if err != nil {
-			log.Warnf("Error getting git diff files: %s", err)
-			return false
-		}
-		return sr.Step.MatchCondition(changedFiles)
-	})
+	t = WithTimeout(t, time.Duration(timeout)*time.Minute).
+		Finally(NewContainerDestroyTask(c)).
+		WithCondition(func() bool {
+			changedFiles, err := common.GetGitChangedFiles(r.Info.Path, targetBranch)
+			if err != nil {
+				log.Warnf("Error getting git diff files: %s", err)
+				return false
+			}
+			return sr.Step.MatchCondition(changedFiles)
+		})
 
 	return func(ctx context.Context) error {
-		return t(WithLoggerComposeStepResult(ctx, sr))
+		ctx = WithLoggerComposeStepResult(ctx, sr)
+		logger := GetLogger(ctx)
+		logger.Infof("Start step: %s", sr.Name)
+		result := GetResult(ctx)
+		stepResult, _ := result.StepResults[sr.Index]
+		stepResult.StartTime = time.Now()
+
+		err := t(ctx)
+		if err != nil && errors.Is(err, context.DeadlineExceeded) {
+			logger.Info("Step timeout")
+		}
+
+		d := stepResult.EndTime.Sub(stepResult.StartTime)
+		logger.Infof("End step: %s [%s] %s", sr.Name, getColoredStatus(stepResult.Status), common.ColorGrey(d.Round(time.Millisecond).String()))
+
+		return err
 	}
 }
 

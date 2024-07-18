@@ -163,26 +163,41 @@ func (c *Container) Exec(ctx context.Context, workdir string, cmd []string, outp
 	if err != nil {
 		return err
 	}
+	defer resp.Close()
 
-	if outputHandler != nil {
-		if err := outputHandler(resp.Reader); err != nil {
-			return err
-		}
-	}
+	done := make(chan int, 1)
+	errChan := make(chan error, 1)
 
-	for {
-		inspectResp, err := c.client.ContainerExecInspect(ctx, exec.ID)
-		if err != nil {
-			return err
-		}
-
-		if !inspectResp.Running {
-			if inspectResp.ExitCode == 0 {
-				return nil
+	go func() {
+		if outputHandler != nil {
+			if err := outputHandler(resp.Reader); err != nil {
+				errChan <- err
 			}
-			return fmt.Errorf("exitcode '%d': failure", inspectResp.ExitCode)
 		}
-		time.Sleep(100 * time.Millisecond)
+		for {
+			inspectResp, err := c.client.ContainerExecInspect(ctx, exec.ID)
+			if err != nil {
+				errChan <- err
+			}
+			if !inspectResp.Running {
+				if inspectResp.ExitCode == 0 {
+					done <- 0
+				} else {
+					errChan <- fmt.Errorf("exitcode '%d': failure", inspectResp.ExitCode)
+				}
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		resp.Close()
+		return ctx.Err()
+	case <-done:
+		return nil
+	case err := <-errChan:
+		return err
 	}
 }
 
