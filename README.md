@@ -27,7 +27,7 @@ As a developer, I often find that the first few pipeline runs for a new project 
   - [x] Default Docker
   - [x] Custom Docker
 - [x] Secret variables from file
-- [ ] Stage
+- [x] Stage
 - [x] Conditional steps
 - [ ] Settings
   - [x] Default image

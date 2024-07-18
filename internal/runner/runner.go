@@ -95,15 +95,10 @@ func (r *Runner) Run(name string, targetBranch string) {
 
 	for i, action := range actions {
 		var actionTask Task
-
 		if action.IsParallel() {
-			var parallelTasks []Task
-			for j, subAction := range action.Parallel.Actions {
-				idx := float32(i+1) + float32(j+1)/10
-				sr := result.AddStep(idx, subAction.Step.GetName(), subAction.Step)
-				parallelTasks = append(parallelTasks, r.newStepTask(sr, targetBranch))
-			}
-			actionTask = ParallelTask(r.getParallelSize(), parallelTasks...)
+			actionTask = r.newParallelTask(action.Parallel, i, result, targetBranch)
+		} else if action.IsStage() {
+			actionTask = r.newStageTask(action.Stage, i, result, targetBranch)
 		} else {
 			idx := float32(i + 1)
 			sr := result.AddStep(idx, action.Step.GetName(), action.Step)
@@ -139,6 +134,38 @@ func (r *Runner) Run(name string, targetBranch string) {
 			logger.Fatalf("Error running task: %s", err)
 		}
 	}
+}
+
+func (r *Runner) newParallelTask(parallel *models.Parallel, i int, result *Result, targetBranch string) Task {
+	var parallelTasks []Task
+	for j, subAction := range parallel.Actions {
+		idx := float32(i+1) + float32(j+1)/10
+		sr := result.AddStep(idx, subAction.Step.GetName(), subAction.Step)
+		parallelTasks = append(parallelTasks, r.newStepTask(sr, targetBranch))
+	}
+	return ParallelTask(r.getParallelSize(), parallelTasks...)
+}
+
+func (r *Runner) newStageTask(stage *models.Stage, i int, result *Result, targetBranch string) Task {
+	// no parallel stages
+	// no parallel steps in stage
+	var stageTasks []Task
+	for j, subAction := range stage.Actions {
+		idx := float32(i+1) + float32(j+1)/10
+		sr := result.AddStep(idx, subAction.Step.GetName(), subAction.Step)
+		stageTasks = append(stageTasks, r.newStepTask(sr, targetBranch))
+	}
+
+	t := ChainTask(stageTasks...)
+
+	return t.WithCondition(func() bool {
+		changedFiles, err := common.GetGitChangedFiles(r.Info.Path, targetBranch)
+		if err != nil {
+			log.Warnf("Error getting git diff files: %s", err)
+			return false
+		}
+		return stage.MatchCondition(changedFiles)
+	})
 }
 
 func (r *Runner) newStepTask(sr *StepResult, targetBranch string) Task {
