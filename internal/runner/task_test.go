@@ -104,3 +104,45 @@ func TestNewParallelTask(t *testing.T) {
 	_ = parallel(ctx)
 	assert.Equal(t, "312", str)
 }
+
+func TestWithTimeout(t *testing.T) {
+	str := ""
+	var task1 Task = func(ctx context.Context) error {
+		c := make(chan int, 1)
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			str += "1"
+			c <- 0
+		}()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-c:
+			return nil
+		}
+	}
+	var task2 Task = func(ctx context.Context) error {
+		c := make(chan int, 1)
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			str += "2"
+			c <- 0
+		}()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-c:
+			return nil
+		}
+	}
+	var task3 Task = func(ctx context.Context) error {
+		str += "3"
+		return nil
+	}
+
+	chain := ChainTask(task1, task2).Finally(task3)
+	chain = WithTimeout(chain, 50*time.Millisecond)
+
+	_ = chain(context.Background())
+	assert.Equal(t, "3", str)
+}

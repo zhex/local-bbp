@@ -192,7 +192,6 @@ func (c *Container) Exec(ctx context.Context, workdir string, cmd []string, outp
 
 	select {
 	case <-ctx.Done():
-		resp.Close()
 		return ctx.Err()
 	case <-done:
 		return nil

@@ -31,7 +31,7 @@ As a developer, I often find that the first few pipeline runs for a new project 
 - [x] Conditional steps
 - [ ] Settings
   - [x] Default image
-  - [ ] Timeout
+  - [x] Timeout
   - [ ] Container Size
 - [x] Validate bitbucket-pipelines.yml file
 

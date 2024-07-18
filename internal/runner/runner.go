@@ -114,6 +114,7 @@ func (r *Runner) Run(name string, targetBranch string) {
 	}
 
 	if chain != nil {
+		chain = WithTimeout(chain, time.Duration(r.Config.MaxPipelineTimeout)*time.Minute)
 		chain = chain.Finally(func(ctx context.Context) error {
 			for _, sr := range result.StepResults {
 				if sr.Status == "failed" {
@@ -211,13 +212,14 @@ func (r *Runner) newStepTask(sr *StepResult, targetBranch string) Task {
 		t = t.Finally(NewCmdTask(c, sr, sr.Step.AfterScript))
 	}
 
+	t = t.Finally(NewContainerDestroyTask(c))
+
 	timeout := sr.Result.Runner.Config.MaxStepTimeout
 	if sr.Step.MaxTime > 0 {
 		timeout = sr.Step.MaxTime
 	}
 
 	t = WithTimeout(t, time.Duration(timeout)*time.Minute).
-		Finally(NewContainerDestroyTask(c)).
 		WithCondition(func() bool {
 			changedFiles, err := common.GetGitChangedFiles(r.Info.Path, targetBranch)
 			if err != nil {

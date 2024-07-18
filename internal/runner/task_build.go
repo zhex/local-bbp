@@ -198,11 +198,14 @@ func NewCmdTask(c *docker.Container, sr *StepResult, cmd []string) Task {
 
 func NewContainerDestroyTask(c *docker.Container) Task {
 	return func(ctx context.Context) error {
+
 		if c.ID == "" {
 			return nil
 		}
 		logger := GetLogger(ctx)
 		logger.Debugf("destroying network and containers %s", c.Inputs.Name)
+		// use a new context to avoid canceling the parent context
+		ctx = context.Background()
 		return c.Network.Destroy(ctx)
 	}
 }
