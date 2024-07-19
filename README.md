@@ -92,10 +92,10 @@ example config file:
     // the path for the cli to download required tools
     "toolDir": "/Users/zhex/.bbp/tools",
     
-    // default timeout for a single pipeline step
-    "maxSteTimout": 120,
+    // default timeout for a single pipeline step (in minutes)
+    "maxStepTimout": 120,
     
-    // default timeout for the whole pipeline
+    // default timeout for the whole pipeline (in minutes)
     "maxPipeTimout": 240,
 }
 ```
