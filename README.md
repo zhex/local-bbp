@@ -90,7 +90,13 @@ example config file:
     "defaultDockerImage": "docker:27.0.3-dind-alpine3.20",
     
     // the path for the cli to download required tools
-    "toolDir": "/Users/zhex/.bbp/tools"
+    "toolDir": "/Users/zhex/.bbp/tools",
+    
+    // default timeout for a single pipeline step
+    "maxSteTimout": 120,
+    
+    // default timeout for the whole pipeline
+    "maxPipeTimout": 240,
 }
 ```
 
@@ -132,7 +138,7 @@ The validation rules are based on the official Bitbucket Pipelines configuration
 Local-BBP is designed to simulate Bitbucket Pipelines as closely as possible, but there are some differences between the two:
 
 - **Environment**: Local-BBP runs pipelines on your local machine, so it may not have access to the same resources as the Bitbucket Pipelines environment.
-- **Features**: Local-BBP does not support all the features of Bitbucket Pipelines, such as custom Docker images and custom services.
+- **Features**: Local-BBP does not support all the features of Bitbucket Pipelines, such as host runners and custom runner size.
 - **Service Access**: In Local-BBP, service names are used as hostnames similar to Docker Compose. In Bitbucket Pipelines, sidecar services are accessed via localhost.
 - **Step Condition**: Bitbucket Pipeline compares all commits between source and target branches in pull-request pipelines,, while in other pipelines, it compares the last commit. Local-BBP includes uncommitted changes for easier development.
 
