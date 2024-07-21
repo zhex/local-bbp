@@ -20,6 +20,7 @@ func CreateRootCmd(version string) *cobra.Command {
 		newListCmd(),
 		newRunCmd(),
 		newValidateCmd(),
+		newIntegrationsCmd(),
 	)
 
 	return rootCmd

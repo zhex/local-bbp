@@ -34,6 +34,7 @@ As a developer, I often find that the first few pipeline runs for a new project 
   - [x] Timeout
   - [ ] Container Size
 - [x] Validate bitbucket-pipelines.yml file
+- [x] Integration marketplace search
 
 ## Installation
 
